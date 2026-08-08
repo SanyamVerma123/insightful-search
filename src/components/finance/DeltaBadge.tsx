@@ -8,10 +8,10 @@ export function DeltaBadge({
   size = "md",
 }: {
   value: number | null | undefined;
-  absolute?: number | null;
-  currency?: string | null;
-  className?: string;
-  size?: "sm" | "md" | "lg";
+  absolute?: number | null | undefined;
+  currency?: string | null | undefined;
+  className?: string | undefined;
+  size?: "sm" | "md" | "lg" | undefined;
 }) {
   if (value === null || value === undefined || !Number.isFinite(value)) {
     return <span className={cn("text-muted-foreground", className)}>—</span>;
