@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ChatRouteImport } from './routes/chat'
 import { Route as CompareRouteImport } from './routes/compare'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as StockSymbolRouteImport } from './routes/stock.$symbol'
@@ -17,6 +18,11 @@ import { Route as StockSymbolRouteImport } from './routes/stock.$symbol'
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ChatRoute = ChatRouteImport.update({
+  id: '/chat',
+  path: '/chat',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CompareRoute = CompareRouteImport.update({
@@ -37,12 +43,14 @@ const StockSymbolRoute = StockSymbolRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/chat': typeof ChatRoute
   '/compare': typeof CompareRoute
   '/api/chat': typeof ApiChatRoute
   '/stock/$symbol': typeof StockSymbolRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/chat': typeof ChatRoute
   '/compare': typeof CompareRoute
   '/api/chat': typeof ApiChatRoute
   '/stock/$symbol': typeof StockSymbolRoute
@@ -50,20 +58,22 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/chat': typeof ChatRoute
   '/compare': typeof CompareRoute
   '/api/chat': typeof ApiChatRoute
   '/stock/$symbol': typeof StockSymbolRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/compare' | '/api/chat' | '/stock/$symbol'
+  fullPaths: '/' | '/chat' | '/compare' | '/api/chat' | '/stock/$symbol'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/compare' | '/api/chat' | '/stock/$symbol'
-  id: '__root__' | '/' | '/compare' | '/api/chat' | '/stock/$symbol'
+  to: '/' | '/chat' | '/compare' | '/api/chat' | '/stock/$symbol'
+  id: '__root__' | '/' | '/chat' | '/compare' | '/api/chat' | '/stock/$symbol'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ChatRoute: typeof ChatRoute
   CompareRoute: typeof CompareRoute
   ApiChatRoute: typeof ApiChatRoute
   StockSymbolRoute: typeof StockSymbolRoute
@@ -76,6 +86,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/chat': {
+      id: '/chat'
+      path: '/chat'
+      fullPath: '/chat'
+      preLoaderRoute: typeof ChatRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/compare': {
@@ -104,6 +121,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ChatRoute: ChatRoute,
   CompareRoute: CompareRoute,
   ApiChatRoute: ApiChatRoute,
   StockSymbolRoute: StockSymbolRoute,
