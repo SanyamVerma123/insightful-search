@@ -4,9 +4,9 @@ import { fmtPrice } from "@/lib/format";
 
 type Props = {
   candles: Candle[];
-  currency?: string | null;
-  height?: number;
-  compact?: boolean;
+  currency?: string | null | undefined;
+  height?: number | undefined;
+  compact?: boolean | undefined;
 };
 
 export function PriceChart({ candles, currency, height = 320, compact = false }: Props) {
