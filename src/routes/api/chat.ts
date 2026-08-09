@@ -118,7 +118,17 @@ export const Route = createFileRoute("/api/chat")({
           providerOptions: { lovable: { reasoningEffort: "none" } },
         });
 
-        return result.toUIMessageStreamResponse({ originalMessages: messages });
+        return result.toUIMessageStreamResponse({
+          originalMessages: messages,
+          onError: (error) => {
+            const message = error instanceof Error ? error.message : String(error);
+            if (message.includes("402") || message.toLowerCase().includes("credit")) {
+              return "AI credits are exhausted for this workspace. Add credits to keep the analyst running.";
+            }
+            if (message.includes("429")) return "Too many requests right now — try again in a moment.";
+            return `The analyst could not complete that request: ${message}`;
+          },
+        });
       },
     },
   },
