@@ -10,7 +10,6 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as ArtifactCheckRouteImport } from './routes/artifact-check'
 import { Route as ChatRouteImport } from './routes/chat'
 import { Route as CompareRouteImport } from './routes/compare'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
@@ -19,11 +18,6 @@ import { Route as StockSymbolRouteImport } from './routes/stock.$symbol'
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ArtifactCheckRoute = ArtifactCheckRouteImport.update({
-  id: '/artifact-check',
-  path: '/artifact-check',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ChatRoute = ChatRouteImport.update({
@@ -49,7 +43,6 @@ const StockSymbolRoute = StockSymbolRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/artifact-check': typeof ArtifactCheckRoute
   '/chat': typeof ChatRoute
   '/compare': typeof CompareRoute
   '/api/chat': typeof ApiChatRoute
@@ -57,7 +50,6 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/artifact-check': typeof ArtifactCheckRoute
   '/chat': typeof ChatRoute
   '/compare': typeof CompareRoute
   '/api/chat': typeof ApiChatRoute
@@ -66,7 +58,6 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/artifact-check': typeof ArtifactCheckRoute
   '/chat': typeof ChatRoute
   '/compare': typeof CompareRoute
   '/api/chat': typeof ApiChatRoute
@@ -74,34 +65,14 @@ export interface FileRoutesById {
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths:
-    | '/'
-    | '/artifact-check'
-    | '/chat'
-    | '/compare'
-    | '/api/chat'
-    | '/stock/$symbol'
+  fullPaths: '/' | '/chat' | '/compare' | '/api/chat' | '/stock/$symbol'
   fileRoutesByTo: FileRoutesByTo
-  to:
-    | '/'
-    | '/artifact-check'
-    | '/chat'
-    | '/compare'
-    | '/api/chat'
-    | '/stock/$symbol'
-  id:
-    | '__root__'
-    | '/'
-    | '/artifact-check'
-    | '/chat'
-    | '/compare'
-    | '/api/chat'
-    | '/stock/$symbol'
+  to: '/' | '/chat' | '/compare' | '/api/chat' | '/stock/$symbol'
+  id: '__root__' | '/' | '/chat' | '/compare' | '/api/chat' | '/stock/$symbol'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  ArtifactCheckRoute: typeof ArtifactCheckRoute
   ChatRoute: typeof ChatRoute
   CompareRoute: typeof CompareRoute
   ApiChatRoute: typeof ApiChatRoute
@@ -115,13 +86,6 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/artifact-check': {
-      id: '/artifact-check'
-      path: '/artifact-check'
-      fullPath: '/artifact-check'
-      preLoaderRoute: typeof ArtifactCheckRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/chat': {
@@ -157,7 +121,6 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  ArtifactCheckRoute: ArtifactCheckRoute,
   ChatRoute: ChatRoute,
   CompareRoute: CompareRoute,
   ApiChatRoute: ApiChatRoute,
