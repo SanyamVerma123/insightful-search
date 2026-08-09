@@ -285,3 +285,9 @@ export async function fetchCompare(
   if (!isRecord(raw)) return [];
   return Object.keys(raw).map((symbol) => ({ symbol, points: toSeries(raw[symbol]) }));
 }
+
+/** Batch snapshot for table views — resilient to individual ticker failures. */
+export async function fetchQuotes(symbols: string[]): Promise<Quote[]> {
+  const results = await Promise.allSettled(symbols.map((s) => fetchSummary(s)));
+  return results.flatMap((r) => (r.status === "fulfilled" ? [r.value.quote] : []));
+}
