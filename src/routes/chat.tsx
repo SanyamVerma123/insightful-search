@@ -4,6 +4,7 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { SiteHeader } from "@/components/finance/SiteHeader";
 import { PromptInput } from "@/components/ui/ai-chat-input";
+import { Markdown } from "@/components/chat/Markdown";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/chat")({
@@ -47,7 +48,7 @@ function ChatPage() {
             <div key={m.id} className={cn("flex", m.role === "user" ? "justify-end" : "justify-start")}>
               <div
                 className={cn(
-                  "max-w-[85%] whitespace-pre-wrap text-[15px] leading-relaxed",
+                  "max-w-[85%] text-[15px] leading-relaxed",
                   m.role === "user"
                     ? "rounded-2xl bg-primary px-4 py-2.5 text-primary-foreground"
                     : "text-foreground",
@@ -55,7 +56,11 @@ function ChatPage() {
               >
                 {m.parts.map((p, i) =>
                   p.type === "text" ? (
-                    <span key={i}>{p.text}</span>
+                    m.role === "user" ? (
+                      <span key={i}>{p.text}</span>
+                    ) : (
+                      <Markdown key={i} content={p.text} messageId={`${m.id}-${i}`} />
+                    )
                   ) : p.type.startsWith("tool-") ? (
                     <span
                       key={i}

@@ -8,6 +8,7 @@ import {
   fetchHistory,
   fetchMarketStrip,
   fetchNews,
+  fetchQuotes,
   fetchSearch,
   fetchSummary,
   fetchUpgrades,
@@ -54,3 +55,14 @@ export const getCorporateActions = createServerFn({ method: "GET" })
 export const getCompare = createServerFn({ method: "GET" })
   .inputValidator((d: { symbols: string; period: string; interval: string }) => d)
   .handler(({ data }) => fetchCompare(data.symbols, data.period, data.interval));
+
+export const getQuotes = createServerFn({ method: "GET" })
+  .inputValidator((d: { symbols: string }) => d)
+  .handler(({ data }) =>
+    fetchQuotes(
+      data.symbols
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean),
+    ),
+  );
