@@ -79,7 +79,7 @@ function buildQuote(symbol: string, snapshot: unknown, ratios: unknown): Quote {
     dayLow: num(s["dayLow"]),
     yearHigh: num(s["yearHigh"]) ?? num(r["fiftyTwoWeekHigh"]),
     yearLow: num(s["yearLow"]) ?? num(r["fiftyTwoWeekLow"]),
-    marketCap: num(s["marketCap"]),
+    marketCap: num(s["marketCap"]) ?? (num(s["shares"]) !== null && price !== null ? num(s["shares"])! * price : null),
     change,
     changePercent: change !== null && prev ? (change / prev) * 100 : num(s["yearChange"]),
   };
@@ -288,6 +288,30 @@ export async function fetchCompare(
 
 /** Batch snapshot for table views — resilient to individual ticker failures. */
 export async function fetchQuotes(symbols: string[]): Promise<Quote[]> {
-  const results = await Promise.allSettled(symbols.map((s) => fetchSummary(s)));
-  return results.flatMap((r) => (r.status === "fulfilled" ? [r.value.quote] : []));
+  const results = await Promise.allSettled(symbols.map((s) => fetchQuoteWithChange(s)));
+  return results.flatMap((r) => (r.status === "fulfilled" ? [r.value] : []));
+}
+
+/** The snapshot endpoint often omits prev close / day range, so fill it from recent candles. */
+async function fetchQuoteWithChange(symbol: string): Promise<Quote> {
+  const [summary, candles] = await Promise.all([
+    fetchSummary(symbol),
+    fetchHistory(symbol, "5d", "1d").catch(() => [] as Candle[]),
+  ]);
+  const quote = summary.quote;
+  const last = candles[candles.length - 1];
+  const prevCandle = candles[candles.length - 2];
+  const price = quote.price ?? last?.c ?? null;
+  const previousClose = quote.previousClose ?? prevCandle?.c ?? null;
+  const change = price !== null && previousClose !== null ? price - previousClose : null;
+  return {
+    ...quote,
+    price,
+    previousClose,
+    dayHigh: quote.dayHigh ?? last?.h ?? null,
+    dayLow: quote.dayLow ?? last?.l ?? null,
+    change,
+    changePercent:
+      change !== null && previousClose ? (change / previousClose) * 100 : quote.changePercent,
+  };
 }
