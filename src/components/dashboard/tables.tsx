@@ -16,7 +16,7 @@ export function Panel({ title, subtitle, children }: { title: string; subtitle?:
   );
 }
 
-export function DataTable({ table, empty = "No data available." }: { table?: GenericTable; empty?: string }) {
+export function DataTable({ table, empty = "No data available." }: { table?: GenericTable | undefined; empty?: string }) {
   if (!table || table.rows.length === 0) return <p className="p-5 text-sm text-muted-foreground">{empty}</p>;
   return (
     <table className="w-full min-w-max text-sm">
@@ -44,7 +44,7 @@ export function DataTable({ table, empty = "No data available." }: { table?: Gen
   );
 }
 
-export function StatementView({ table, empty }: { table?: StatementTable; empty?: string }) {
+export function StatementView({ table, empty }: { table?: StatementTable | undefined; empty?: string }) {
   if (!table || table.rows.length === 0)
     return <p className="p-5 text-sm text-muted-foreground">{empty ?? "No data available."}</p>;
   return (
@@ -75,7 +75,7 @@ export function StatementView({ table, empty }: { table?: StatementTable; empty?
   );
 }
 
-export function ScreenerTable({ rows, loading }: { rows?: ScreenerRow[]; loading?: boolean }) {
+export function ScreenerTable({ rows, loading }: { rows?: ScreenerRow[] | undefined; loading?: boolean | undefined }) {
   if (loading) return <p className="p-5 text-sm text-muted-foreground">Screening live markets…</p>;
   if (!rows || rows.length === 0) return <p className="p-5 text-sm text-muted-foreground">No matches right now.</p>;
   return (
