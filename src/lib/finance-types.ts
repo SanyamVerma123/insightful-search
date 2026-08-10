@@ -1,4 +1,4 @@
-import type { Candle, SeriesPoint, StatementTable } from "./finance-normalize";
+import type { Candle, GenericTable, SeriesPoint, StatementTable } from "./finance-normalize";
 
 export type Quote = {
   symbol: string;
@@ -88,7 +88,20 @@ export type IndexQuote = {
   changePercent: number | null;
 };
 
-export type { Candle, SeriesPoint, StatementTable };
+export type { Candle, GenericTable, SeriesPoint, StatementTable };
+
+export type ScreenerRow = {
+  symbol: string;
+  name: string;
+  price: number | null;
+  changePercent: number | null;
+  marketCap: number | null;
+  volume: number | null;
+  peRatio: number | null;
+  exchange: string | null;
+  sector: string | null;
+  rating: string | null;
+};
 
 export const RANGES = [
   { key: "1d", label: "1D", period: "1d", interval: "5m" },
@@ -104,10 +117,10 @@ export const RANGES = [
 export type RangeKey = (typeof RANGES)[number]["key"];
 
 export const MARKET_INDICES = [
-  { key: "NIFTY50", label: "NIFTY 50" },
-  { key: "SENSEX", label: "SENSEX" },
-  { key: "BANKNIFTY", label: "BANK NIFTY" },
-  { key: "SP500", label: "S&P 500" },
+  { key: "^NSEI", label: "NIFTY 50" },
+  { key: "^BSESN", label: "SENSEX" },
+  { key: "^GSPC", label: "S&P 500" },
+  { key: "^IXIC", label: "NASDAQ" },
 ] as const;
 
 export const TRENDING = [
