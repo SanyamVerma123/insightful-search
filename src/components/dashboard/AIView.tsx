@@ -1,7 +1,10 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useChat } from "@ai-sdk/react";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { DefaultChatTransport } from "ai";
 import { Loader2 } from "lucide-react";
+import { listChatModels } from "@/lib/models.functions";
 import { PromptInput } from "@/components/ui/ai-chat-input";
 import { Markdown } from "@/components/chat/Markdown";
 import { ArtifactPanel } from "@/components/chat/ArtifactPanel";
@@ -18,16 +21,59 @@ const SUGGESTIONS = [
 export function AIView() {
   const [error, setError] = useState<string | null>(null);
   const [artifact, setArtifact] = useState<Artifact | null>(null);
+  const [model, setModel] = useState("lovable:openai/gpt-5.6-sol");
+  const modelsFn = useServerFn(listChatModels);
+  const { data: catalog } = useQuery({ queryKey: ["chatmodels"], queryFn: () => modelsFn(), staleTime: 600_000 });
+
+  const transport = useMemo(
+    () => new DefaultChatTransport({ api: "/api/chat", body: { model } }),
+    [model],
+  );
   const { messages, sendMessage, status, stop } = useChat({
-    transport: new DefaultChatTransport({ api: "/api/chat" }),
+    transport,
     onError: (e) => setError(e.message),
   });
   const busy = status === "submitted" || status === "streaming";
+  const lovable = (catalog?.models ?? []).filter((m) => m.provider === "lovable");
+  const openrouter = (catalog?.models ?? []).filter((m) => m.provider === "openrouter");
+
 
   return (
     <div className="flex h-full min-h-0">
       <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex shrink-0 items-center gap-2 border-b border-border px-6 py-2.5">
+          <span className="text-[11px] uppercase tracking-wider text-muted-foreground">Model</span>
+          <select
+            value={model}
+            onChange={(e) => setModel(e.target.value)}
+            className="h-8 max-w-[320px] rounded-lg border border-border bg-background px-2 text-xs text-foreground outline-none focus:border-primary/60"
+          >
+            <optgroup label="Lovable AI">
+              {lovable.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.label}
+                  {m.note ? ` · ${m.note}` : ""}
+                </option>
+              ))}
+            </optgroup>
+            {openrouter.length > 0 && (
+              <optgroup label="OpenRouter">
+                {openrouter.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.label}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+          </select>
+          {catalog && !catalog.hasOpenRouter && (
+            <span className="text-[11px] text-muted-foreground">
+              Add an OpenRouter API key to unlock the full model catalog.
+            </span>
+          )}
+        </div>
         <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
+
           <div className="mx-auto w-full max-w-3xl space-y-6">
             {messages.length === 0 && (
               <div className="py-10 text-center">

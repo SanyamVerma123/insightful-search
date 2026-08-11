@@ -100,6 +100,22 @@ export function buildNav(watchlistCount: number, alertCount: number): NavGroup[]
       ],
     },
     {
+      heading: "Research Tools",
+      items: [
+        { id: "movers", title: "Market Movers", icon: Flame },
+        { id: "proscreener", title: "Pro Screener", icon: SlidersHorizontal },
+        { id: "etfscreener", title: "ETF Screener", icon: Blocks },
+        { id: "sectors", title: "Sectors", icon: Globe },
+        { id: "calendars", title: "Calendars", icon: CandlestickChart },
+        { id: "globalmarkets", title: "Global Markets", icon: Activity },
+        { id: "options", title: "Options Chain", icon: BarChart3 },
+        { id: "ownership", title: "Ownership", icon: Crown },
+        { id: "estimates", title: "Estimates & Valuation", icon: Target },
+        { id: "filings", title: "Filings & ESG", icon: Newspaper },
+        { id: "newssearch", title: "News Search", icon: Search },
+      ],
+    },
+    {
       heading: "Markets",
       items: [
         { id: "equities", title: "US Equities", icon: CandlestickChart },
@@ -108,6 +124,7 @@ export function buildNav(watchlistCount: number, alertCount: number): NavGroup[]
         { id: "forex", title: "Forex", icon: Globe },
       ],
     },
+
   ];
 }
 

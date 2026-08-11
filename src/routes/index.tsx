@@ -6,6 +6,19 @@ import { QuoteTable } from "@/components/dashboard/QuoteTable";
 import { AIView } from "@/components/dashboard/AIView";
 import { AlertsView, MarketStrip, NewsView, SettingsView, type Alert } from "@/components/dashboard/views";
 import {
+  CalendarsView,
+  EstimatesView,
+  EtfScreenerView,
+  FilingsView,
+  GlobalMarketsView,
+  MoversView,
+  NewsSearchView,
+  OptionsView,
+  OwnershipView,
+  ProScreenerView,
+  SectorsView,
+} from "@/components/dashboard/tool-views";
+import {
   CRYPTO_SYMS,
   ETF_SYMS,
   FOREX_SYMS,
@@ -114,6 +127,29 @@ function Dashboard() {
           return table(CRYPTO_SYMS);
         case "forex":
           return table(FOREX_SYMS);
+        case "movers":
+          return <MoversView />;
+        case "proscreener":
+          return <ProScreenerView />;
+        case "etfscreener":
+          return <EtfScreenerView />;
+        case "sectors":
+          return <SectorsView />;
+        case "calendars":
+          return <CalendarsView />;
+        case "globalmarkets":
+          return <GlobalMarketsView />;
+        case "options":
+          return <OptionsView />;
+        case "ownership":
+          return <OwnershipView />;
+        case "estimates":
+          return <EstimatesView />;
+        case "filings":
+          return <FilingsView />;
+        case "newssearch":
+          return <NewsSearchView />;
+
         case "logout":
           return <p className="text-sm text-muted-foreground">Local session only — your data stays in this browser.</p>;
         default: {
