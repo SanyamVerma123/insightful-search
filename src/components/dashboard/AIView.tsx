@@ -1,7 +1,10 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useChat } from "@ai-sdk/react";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { DefaultChatTransport } from "ai";
 import { Loader2 } from "lucide-react";
+import { listChatModels } from "@/lib/models.functions";
 import { PromptInput } from "@/components/ui/ai-chat-input";
 import { Markdown } from "@/components/chat/Markdown";
 import { ArtifactPanel } from "@/components/chat/ArtifactPanel";
