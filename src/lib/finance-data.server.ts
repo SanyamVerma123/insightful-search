@@ -360,7 +360,7 @@ export async function fetchMarketStrip(indices?: { key: string; label: string }[
   }).catch(() => null);
   const results = pick(raw, "results");
 
-  return MARKET_INDICES.map((index) => {
+  return list.map((index) => {
     const points = isRecord(results)
       ? toCandles(pick(results[index.key], "history")).map((c) => ({ t: c.t, c: c.c }))
       : [];
