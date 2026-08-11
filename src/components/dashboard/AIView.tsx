@@ -21,11 +21,22 @@ const SUGGESTIONS = [
 export function AIView() {
   const [error, setError] = useState<string | null>(null);
   const [artifact, setArtifact] = useState<Artifact | null>(null);
+  const [model, setModel] = useState("lovable:openai/gpt-5.6-sol");
+  const modelsFn = useServerFn(listChatModels);
+  const { data: catalog } = useQuery({ queryKey: ["chatmodels"], queryFn: () => modelsFn(), staleTime: 600_000 });
+
+  const transport = useMemo(
+    () => new DefaultChatTransport({ api: "/api/chat", body: { model } }),
+    [model],
+  );
   const { messages, sendMessage, status, stop } = useChat({
-    transport: new DefaultChatTransport({ api: "/api/chat" }),
+    transport,
     onError: (e) => setError(e.message),
   });
   const busy = status === "submitted" || status === "streaming";
+  const lovable = (catalog?.models ?? []).filter((m) => m.provider === "lovable");
+  const openrouter = (catalog?.models ?? []).filter((m) => m.provider === "openrouter");
+
 
   return (
     <div className="flex h-full min-h-0">
