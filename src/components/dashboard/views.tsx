@@ -13,7 +13,7 @@ export type Alert = { id: string; symbol: string; above: boolean; price: number;
 
 export function MarketStrip() {
   const fn = useServerFn(getMarketStrip);
-  const { data } = useQuery({ queryKey: ["strip"], queryFn: () => fn(), staleTime: 60_000 });
+  const { data } = useQuery({ queryKey: ["strip"], queryFn: () => fn({ data: {} }), staleTime: 60_000 });
   return (
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
       {(data ?? []).map((ix) => (
