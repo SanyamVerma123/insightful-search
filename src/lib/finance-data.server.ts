@@ -348,8 +348,10 @@ export async function fetchQuotes(symbols: string[]): Promise<Quote[]> {
   return out;
 }
 
-export async function fetchMarketStrip(): Promise<IndexQuote[]> {
-  const tickers = MARKET_INDICES.map((i) => i.key);
+export async function fetchMarketStrip(indices?: { key: string; label: string }[]): Promise<IndexQuote[]> {
+  const list = indices && indices.length > 0 ? indices : MARKET_INDICES.map((i) => ({ key: i.key, label: i.label }));
+  const tickers = list.map((i) => i.key);
+
   const raw = await callMcpTool("batch_price_history", {
     tickers,
     period: "1mo",
