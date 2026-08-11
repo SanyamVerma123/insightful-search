@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import {
   fetchAnalyst,
   fetchCalendar,
+  fetchClassify,
   fetchCompare,
   fetchCorporateActions,
   fetchEarningsDates,
@@ -32,6 +33,7 @@ import {
   fetchSustainability,
   fetchUpgrades,
   fetchValuationMeasures,
+  fetchWatchlistNews,
 } from "./finance-data.server";
 
 export const getSummary = createServerFn({ method: "GET" })
@@ -42,7 +44,9 @@ export const getHistory = createServerFn({ method: "GET" })
   .inputValidator((d: { symbol: string; period: string; interval: string }) => d)
   .handler(({ data }) => fetchHistory(data.symbol, data.period, data.interval));
 
-export const getMarketStrip = createServerFn({ method: "GET" }).handler(() => fetchMarketStrip());
+export const getMarketStrip = createServerFn({ method: "GET" })
+  .inputValidator((d: { indices?: { key: string; label: string }[] }) => d)
+  .handler(({ data }) => fetchMarketStrip(data.indices));
 
 export const getNews = createServerFn({ method: "GET" })
   .inputValidator((d: { symbol: string }) => d)
@@ -178,3 +182,27 @@ export const getSecFilings = createServerFn({ method: "GET" })
 export const getEarningsDates = createServerFn({ method: "GET" })
   .inputValidator((d: { symbol: string }) => d)
   .handler(({ data }) => fetchEarningsDates(data.symbol));
+
+/* ---- Watchlist support ---- */
+
+export const classifySymbols = createServerFn({ method: "GET" })
+  .inputValidator((d: { symbols: string }) => d)
+  .handler(({ data }) =>
+    fetchClassify(
+      data.symbols
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean),
+    ),
+  );
+
+export const getWatchlistNews = createServerFn({ method: "GET" })
+  .inputValidator((d: { symbols: string }) => d)
+  .handler(({ data }) =>
+    fetchWatchlistNews(
+      data.symbols
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean),
+    ),
+  );
