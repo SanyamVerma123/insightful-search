@@ -6,6 +6,19 @@ import { QuoteTable } from "@/components/dashboard/QuoteTable";
 import { AIView } from "@/components/dashboard/AIView";
 import { AlertsView, MarketStrip, NewsView, SettingsView, type Alert } from "@/components/dashboard/views";
 import {
+  CalendarsView,
+  EstimatesView,
+  EtfScreenerView,
+  FilingsView,
+  GlobalMarketsView,
+  MoversView,
+  NewsSearchView,
+  OptionsView,
+  OwnershipView,
+  ProScreenerView,
+  SectorsView,
+} from "@/components/dashboard/tool-views";
+import {
   CRYPTO_SYMS,
   ETF_SYMS,
   FOREX_SYMS,
