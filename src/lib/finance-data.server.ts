@@ -348,8 +348,10 @@ export async function fetchQuotes(symbols: string[]): Promise<Quote[]> {
   return out;
 }
 
-export async function fetchMarketStrip(): Promise<IndexQuote[]> {
-  const tickers = MARKET_INDICES.map((i) => i.key);
+export async function fetchMarketStrip(indices?: { key: string; label: string }[]): Promise<IndexQuote[]> {
+  const list = indices && indices.length > 0 ? indices : MARKET_INDICES.map((i) => ({ key: i.key, label: i.label }));
+  const tickers = list.map((i) => i.key);
+
   const raw = await callMcpTool("batch_price_history", {
     tickers,
     period: "1mo",
@@ -358,7 +360,7 @@ export async function fetchMarketStrip(): Promise<IndexQuote[]> {
   }).catch(() => null);
   const results = pick(raw, "results");
 
-  return MARKET_INDICES.map((index) => {
+  return list.map((index) => {
     const points = isRecord(results)
       ? toCandles(pick(results[index.key], "history")).map((c) => ({ t: c.t, c: c.c }))
       : [];
@@ -407,14 +409,33 @@ export async function fetchScreenPredefined(name: string, size = 25): Promise<Sc
 export type EquityScreenInput = {
   region?: string;
   minMarketCap?: number;
+  maxMarketCap?: number;
+  minPe?: number;
   maxPe?: number;
   minGrowth?: number;
   minDividendYield?: number;
+  minPrice?: number;
+  maxPrice?: number;
+  minVolume?: number;
+  minChangePercent?: number;
+  maxChangePercent?: number;
+  exchange?: string;
+  nameContains?: string;
   sector?: string;
   size?: number;
   sortField?: string;
   sortAscending?: boolean;
 };
+
+/** Yahoo's screener expects Title Case sector names, not the hyphenated sector keys. */
+function screenerSector(value?: string): string | undefined {
+  if (!value) return undefined;
+  if (!value.includes("-")) return value;
+  return value
+    .split("-")
+    .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
+    .join(" ");
+}
 
 export async function fetchScreenEquities(input: EquityScreenInput): Promise<ScreenerRow[]> {
   const raw = await callMcpTool("screen_equities", {
@@ -423,13 +444,72 @@ export async function fetchScreenEquities(input: EquityScreenInput): Promise<Scr
     max_pe: input.maxPe,
     min_growth: input.minGrowth,
     min_dividend_yield: input.minDividendYield,
-    sector: input.sector,
-    size: input.size ?? 25,
+    sector: screenerSector(input.sector),
+    size: Math.min(250, Math.max(1, input.size ?? 25)),
     sort_field: input.sortField,
     sort_ascending: input.sortAscending,
   });
-  return toScreenerRows(pick(raw, "quotes") ?? pick(raw, "data"));
+  const all = toScreenerRows(pick(raw, "quotes") ?? pick(raw, "data"));
+  const nameQuery = input.nameContains?.toLowerCase();
+  return all.filter((r) => {
+    if (input.maxMarketCap !== undefined && (r.marketCap ?? Infinity) > input.maxMarketCap) return false;
+    if (input.minPe !== undefined && (r.peRatio ?? -Infinity) < input.minPe) return false;
+    if (input.minPrice !== undefined && (r.price ?? -Infinity) < input.minPrice) return false;
+    if (input.maxPrice !== undefined && (r.price ?? Infinity) > input.maxPrice) return false;
+    if (input.minVolume !== undefined && (r.volume ?? -Infinity) < input.minVolume) return false;
+    if (input.minChangePercent !== undefined && (r.changePercent ?? -Infinity) < input.minChangePercent) return false;
+    if (input.maxChangePercent !== undefined && (r.changePercent ?? Infinity) > input.maxChangePercent) return false;
+    if (input.exchange && !(r.exchange ?? "").toLowerCase().includes(input.exchange.toLowerCase())) return false;
+    if (nameQuery && !`${r.symbol} ${r.name}`.toLowerCase().includes(nameQuery)) return false;
+    return true;
+  });
 }
+
+export type TickerMeta = { symbol: string; name: string; sector: string; industry: string; currency: string | null };
+
+/** Sector / industry classification used to auto-group the watchlist. */
+export async function fetchClassify(symbols: string[]): Promise<TickerMeta[]> {
+  const settled = await Promise.allSettled(
+    symbols.slice(0, 40).map(async (symbol) => {
+      const raw = await callMcpTool("get_company_info", { ticker: symbol });
+      const info = isRecord(pick(raw, "info")) ? (pick(raw, "info") as Record<string, unknown>) : {};
+      return {
+        symbol,
+        name: str(info["shortName"]) ?? str(info["longName"]) ?? symbol,
+        sector: str(info["sector"]) ?? guessSector(symbol),
+        industry: str(info["industry"]) ?? "Other",
+        currency: str(info["currency"]),
+      } satisfies TickerMeta;
+    }),
+  );
+  return settled.flatMap((s) => (s.status === "fulfilled" ? [s.value] : []));
+}
+
+function guessSector(symbol: string) {
+  if (symbol.endsWith("-USD")) return "Crypto";
+  if (symbol.endsWith("=X")) return "Forex";
+  if (symbol.startsWith("^")) return "Index";
+  return "Uncategorised";
+}
+
+export type WatchNews = NewsItem & { symbol: string };
+
+/** Headlines across every watchlist ticker, newest first. */
+export async function fetchWatchlistNews(symbols: string[], perTicker = 5): Promise<WatchNews[]> {
+  if (symbols.length === 0) return [];
+  const raw = await callMcpTool("batch_news", { tickers: symbols.slice(0, 25), count: perTicker }).catch(() => null);
+  const results = pick(raw, "results");
+  const out: WatchNews[] = [];
+  if (isRecord(results)) {
+    for (const symbol of symbols) {
+      const entry = results[symbol];
+      const items = normalizeNews(pick(entry, "news") ?? entry);
+      for (const item of items) out.push({ ...item, symbol });
+    }
+  }
+  return out.sort((a, b) => new Date(b.pubDate ?? 0).getTime() - new Date(a.pubDate ?? 0).getTime());
+}
+
 
 export async function fetchScreenEtfs(region = "us", size = 25): Promise<ScreenerRow[]> {
   const raw = await callMcpTool("screen_etfs", { region, size });
