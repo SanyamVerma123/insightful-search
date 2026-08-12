@@ -18,26 +18,29 @@ const LOVABLE_MODELS: ChatModel[] = [
 type OpenRouterModel = { id?: string; name?: string };
 
 /** Model catalog for the chat picker: Lovable AI plus the live OpenRouter list. */
-export const listChatModels = createServerFn({ method: "GET" }).handler(async () => {
-  const hasOpenRouter = Boolean(process.env["OPENROUTER_API_KEY"]);
-  let openrouter: ChatModel[] = [];
+export const listChatModels = createServerFn({ method: "GET" })
+  .inputValidator((d: { openrouterKey?: string }) => d)
+  .handler(async ({ data }) => {
+    const userKey = data.openrouterKey?.trim();
+    const hasOpenRouter = Boolean(userKey || process.env["OPENROUTER_API_KEY"]);
+    let openrouter: ChatModel[] = [];
 
-  if (hasOpenRouter) {
-    try {
-      const res = await fetch("https://openrouter.ai/api/v1/models");
-      const json = (await res.json()) as { data?: OpenRouterModel[] };
-      openrouter = (json.data ?? [])
-        .filter((m): m is { id: string; name?: string } => typeof m.id === "string")
-        .map((m) => ({
-          id: `openrouter:${m.id}`,
-          label: m.name ?? m.id,
-          provider: "openrouter" as const,
-        }))
-        .sort((a, b) => a.label.localeCompare(b.label));
-    } catch {
-      openrouter = [];
+    if (hasOpenRouter) {
+      try {
+        const res = await fetch("https://openrouter.ai/api/v1/models");
+        const json = (await res.json()) as { data?: OpenRouterModel[] };
+        openrouter = (json.data ?? [])
+          .filter((m): m is { id: string; name?: string } => typeof m.id === "string")
+          .map((m) => ({
+            id: `openrouter:${m.id}`,
+            label: m.name ?? m.id,
+            provider: "openrouter" as const,
+          }))
+          .sort((a, b) => a.label.localeCompare(b.label));
+      } catch {
+        openrouter = [];
+      }
     }
-  }
 
-  return { models: [...LOVABLE_MODELS, ...openrouter], hasOpenRouter };
-});
+    return { models: [...LOVABLE_MODELS, ...openrouter], hasOpenRouter };
+  });
