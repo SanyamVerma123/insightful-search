@@ -22,13 +22,19 @@ export function AIView() {
   const [error, setError] = useState<string | null>(null);
   const [artifact, setArtifact] = useState<Artifact | null>(null);
   const [model, setModel] = useState("lovable:openai/gpt-5.6-sol");
+  const { apiKeys } = useAppState();
   const modelsFn = useServerFn(listChatModels);
-  const { data: catalog } = useQuery({ queryKey: ["chatmodels"], queryFn: () => modelsFn(), staleTime: 600_000 });
+  const { data: catalog } = useQuery({
+    queryKey: ["chatmodels", apiKeys.openrouter ? "user" : "env"],
+    queryFn: () => modelsFn({ data: { openrouterKey: apiKeys.openrouter } }),
+    staleTime: 600_000,
+  });
 
   const transport = useMemo(
-    () => new DefaultChatTransport({ api: "/api/chat", body: { model } }),
-    [model],
+    () => new DefaultChatTransport({ api: "/api/chat", body: { model, keys: apiKeys } }),
+    [model, apiKeys],
   );
+
   const { messages, sendMessage, status, stop } = useChat({
     transport,
     onError: (e) => setError(e.message),
