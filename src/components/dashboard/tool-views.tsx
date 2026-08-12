@@ -154,28 +154,37 @@ function Num({
   );
 }
 
-function toParams(f: ScreenerFilters) {
-  const n = (v: string) => (v.trim() === "" || Number.isNaN(Number(v)) ? undefined : Number(v));
-  return {
+type ScreenParams = Parameters<typeof runEquityScreener>[0]["data"];
+
+function toParams(f: ScreenerFilters): ScreenParams {
+  const out: Record<string, string | number | boolean> = {
     region: f.region,
     size: f.size,
-    ...(f.sector ? { sector: f.sector } : {}),
-    ...(f.exchange ? { exchange: f.exchange } : {}),
-    ...(f.nameContains ? { nameContains: f.nameContains } : {}),
-    ...(n(f.minMarketCap) !== undefined ? { minMarketCap: n(f.minMarketCap) } : {}),
-    ...(n(f.maxMarketCap) !== undefined ? { maxMarketCap: n(f.maxMarketCap) } : {}),
-    ...(n(f.minPe) !== undefined ? { minPe: n(f.minPe) } : {}),
-    ...(n(f.maxPe) !== undefined ? { maxPe: n(f.maxPe) } : {}),
-    ...(n(f.minGrowth) !== undefined ? { minGrowth: n(f.minGrowth) } : {}),
-    ...(n(f.minDividendYield) !== undefined ? { minDividendYield: n(f.minDividendYield) } : {}),
-    ...(n(f.minPrice) !== undefined ? { minPrice: n(f.minPrice) } : {}),
-    ...(n(f.maxPrice) !== undefined ? { maxPrice: n(f.maxPrice) } : {}),
-    ...(n(f.minVolume) !== undefined ? { minVolume: n(f.minVolume) } : {}),
-    ...(n(f.minChangePercent) !== undefined ? { minChangePercent: n(f.minChangePercent) } : {}),
-    ...(n(f.maxChangePercent) !== undefined ? { maxChangePercent: n(f.maxChangePercent) } : {}),
     sortField: f.sortField,
     sortAscending: f.sortAscending,
   };
+  const num = (k: string, v: string) => {
+    const n = Number(v);
+    if (v.trim() !== "" && Number.isFinite(n)) out[k] = n;
+  };
+  const str = (k: string, v: string) => {
+    if (v.trim() !== "") out[k] = v.trim();
+  };
+  str("sector", f.sector);
+  str("exchange", f.exchange);
+  str("nameContains", f.nameContains);
+  num("minMarketCap", f.minMarketCap);
+  num("maxMarketCap", f.maxMarketCap);
+  num("minPe", f.minPe);
+  num("maxPe", f.maxPe);
+  num("minGrowth", f.minGrowth);
+  num("minDividendYield", f.minDividendYield);
+  num("minPrice", f.minPrice);
+  num("maxPrice", f.maxPrice);
+  num("minVolume", f.minVolume);
+  num("minChangePercent", f.minChangePercent);
+  num("maxChangePercent", f.maxChangePercent);
+  return out as ScreenParams;
 }
 
 /** Read-only run of a saved screener preset. */
@@ -506,13 +515,10 @@ export function SectorsView() {
       {industry && (
         <>
           <Panel title={`${sectorLabel(industry)} — top companies`}>
-            <TableBarChart table={ind?.topPerforming ?? ind?.topCompanies} />
+            <TableBarChart table={ind} />
           </Panel>
           <Panel title={`${sectorLabel(industry)} — companies`}>
-            <DataTable table={ind?.topCompanies} />
-          </Panel>
-          <Panel title="Growth companies">
-            <DataTable table={ind?.topGrowth} />
+            <DataTable table={ind} />
           </Panel>
         </>
       )}
