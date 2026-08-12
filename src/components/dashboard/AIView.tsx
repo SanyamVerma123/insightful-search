@@ -9,7 +9,9 @@ import { PromptInput } from "@/components/ui/ai-chat-input";
 import { Markdown } from "@/components/chat/Markdown";
 import { ArtifactPanel } from "@/components/chat/ArtifactPanel";
 import type { Artifact } from "@/components/chat/artifact-types";
+import { useAppState } from "@/lib/app-state";
 import { cn } from "@/lib/utils";
+
 
 const SUGGESTIONS = [
   "Compare TCS and Infosys on margins and valuation",
