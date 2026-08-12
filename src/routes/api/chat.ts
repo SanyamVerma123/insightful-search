@@ -258,11 +258,12 @@ export const Route = createFileRoute("/api/chat")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const body = (await request.json()) as { messages?: unknown; model?: unknown };
+        const body = (await request.json()) as { messages?: unknown; model?: unknown; keys?: unknown };
         if (!Array.isArray(body.messages)) {
           return new Response("Messages are required", { status: 400 });
         }
 
+        const keys = (body.keys ?? {}) as { openrouter?: string; lovable?: string };
         const selected = typeof body.model === "string" && body.model.includes(":") ? body.model : "lovable:openai/gpt-5.6-sol";
         const [providerId, ...rest] = selected.split(":");
         const modelId = rest.join(":");
@@ -271,7 +272,7 @@ export const Route = createFileRoute("/api/chat")({
         let isLovableOpenAI = false;
 
         if (providerId === "openrouter") {
-          const orKey = process.env["OPENROUTER_API_KEY"];
+          const orKey = keys.openrouter?.trim() || process.env["OPENROUTER_API_KEY"];
           if (!orKey) {
             return new Response("OpenRouter is not connected yet — add an OpenRouter API key in settings.", {
               status: 400,
@@ -279,11 +280,12 @@ export const Route = createFileRoute("/api/chat")({
           }
           model = createOpenRouterProvider(orKey)(modelId);
         } else {
-          const key = process.env["LOVABLE_API_KEY"];
+          const key = keys.lovable?.trim() || process.env["LOVABLE_API_KEY"];
           if (!key) return new Response("AI is not configured", { status: 500 });
           model = createLovableAiGatewayProvider(key)(modelId);
           isLovableOpenAI = modelId.startsWith("openai/gpt-5");
         }
+
 
         const messages = body.messages as UIMessage[];
 
