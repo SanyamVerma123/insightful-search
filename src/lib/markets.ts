@@ -3,6 +3,7 @@ export type MarketId = "US" | "IN";
 export type MarketConfig = {
   id: MarketId;
   label: string;
+  short: string;
   region: string;
   currency: string;
   indices: { key: string; label: string }[];
@@ -15,6 +16,7 @@ export const MARKETS: Record<MarketId, MarketConfig> = {
   US: {
     id: "US",
     label: "United States",
+    short: "US",
     region: "us",
     currency: "USD",
     indices: [
@@ -30,6 +32,7 @@ export const MARKETS: Record<MarketId, MarketConfig> = {
   IN: {
     id: "IN",
     label: "India",
+    short: "IN",
     region: "in",
     currency: "INR",
     indices: [

@@ -34,6 +34,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { searchTickers } from "@/lib/finance.functions";
+import { useAppState, useMarketConfig } from "@/lib/app-state";
+import { MARKETS, type MarketId } from "@/lib/markets";
 import { cn } from "@/lib/utils";
 
 export type PageId = string;
@@ -43,13 +45,19 @@ type NavGroup = { heading?: string; items: NavItem[] };
 
 export const PAGE_TITLES: Record<string, string> = {};
 
-export function buildNav(watchlistCount: number, alertCount: number): NavGroup[] {
+export function buildNav(
+  watchlistCount: number,
+  alertCount: number,
+  saved: { id: string; name: string }[],
+  marketLabel: string,
+  supportsFilings: boolean,
+): NavGroup[] {
   return [
     {
       items: [
         { id: "search", title: "Search", icon: Search, shortcut: "⌘K" },
         { id: "markets", title: "Markets", icon: TrendingUp },
-        { id: "screener", title: "Stock Screener", icon: SlidersHorizontal },
+        { id: "proscreener", title: "Pro Screener", icon: SlidersHorizontal },
         { id: "watchlist", title: "Watchlist", icon: Star, badge: watchlistCount },
         { id: "ai", title: "AI Analyst", icon: Sparkles },
         { id: "news", title: "Market News", icon: Newspaper },
@@ -97,13 +105,22 @@ export function buildNav(watchlistCount: number, alertCount: number): NavGroup[]
             { id: "vol-earnings", title: "Earnings Plays", icon: CandlestickChart },
           ],
         },
+        ...(saved.length > 0
+          ? [
+              {
+                id: "custom",
+                title: "My Screeners",
+                icon: Star,
+                children: saved.map((s) => ({ id: `saved:${s.id}`, title: s.name, icon: SlidersHorizontal })),
+              } as NavItem,
+            ]
+          : []),
       ],
     },
     {
       heading: "Research Tools",
       items: [
         { id: "movers", title: "Market Movers", icon: Flame },
-        { id: "proscreener", title: "Pro Screener", icon: SlidersHorizontal },
         { id: "etfscreener", title: "ETF Screener", icon: Blocks },
         { id: "sectors", title: "Sectors", icon: Globe },
         { id: "calendars", title: "Calendars", icon: CandlestickChart },
@@ -111,14 +128,14 @@ export function buildNav(watchlistCount: number, alertCount: number): NavGroup[]
         { id: "options", title: "Options Chain", icon: BarChart3 },
         { id: "ownership", title: "Ownership", icon: Crown },
         { id: "estimates", title: "Estimates & Valuation", icon: Target },
-        { id: "filings", title: "Filings & ESG", icon: Newspaper },
+        ...(supportsFilings ? [{ id: "filings", title: "Filings & ESG", icon: Newspaper } as NavItem] : []),
         { id: "newssearch", title: "News Search", icon: Search },
       ],
     },
     {
       heading: "Markets",
       items: [
-        { id: "equities", title: "US Equities", icon: CandlestickChart },
+        { id: "equities", title: `${marketLabel} Equities`, icon: CandlestickChart },
         { id: "etfs", title: "ETFs", icon: Blocks },
         { id: "crypto", title: "Crypto", icon: Bitcoin },
         { id: "forex", title: "Forex", icon: Globe },
@@ -213,7 +230,7 @@ function CommandPalette({
     () =>
       [
         { label: "Go to Markets", id: "markets" },
-        { label: "Go to Stock Screener", id: "screener" },
+        { label: "Go to Pro Screener", id: "proscreener" },
         { label: "Go to Watchlist", id: "watchlist" },
         { label: "Go to AI Analyst", id: "ai" },
         { label: "Go to Market News", id: "news" },
@@ -301,7 +318,15 @@ export function DashboardShell({
   const [collapsed, setCollapsed] = useState(false);
   const [expanded, setExpanded] = useState<Set<string>>(new Set(["momentum"]));
   const [paletteOpen, setPaletteOpen] = useState(false);
-  const groups = buildNav(watchlistCount, alertCount);
+  const { screeners, market, setMarket } = useAppState();
+  const cfg = useMarketConfig();
+  const groups = buildNav(
+    watchlistCount,
+    alertCount,
+    screeners.map((s) => ({ id: s.id, name: s.name })),
+    cfg.label,
+    cfg.supportsFilings,
+  );
   collectTitles(groups);
 
   useEffect(() => {
@@ -397,10 +422,25 @@ export function DashboardShell({
             <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/60" />
             <span className="font-medium text-foreground">{PAGE_TITLES[page] ?? "Markets"}</span>
           </nav>
+          <div className="ml-auto flex items-center gap-1 rounded-lg border border-border p-0.5">
+            {(Object.keys(MARKETS) as MarketId[]).map((id) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setMarket(id)}
+                className={cn(
+                  "rounded-md px-2.5 py-1 text-[11px] transition-colors",
+                  market === id ? "bg-primary/15 font-medium text-primary" : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {MARKETS[id].short}
+              </button>
+            ))}
+          </div>
           <button
             type="button"
             onClick={() => setPaletteOpen(true)}
-            className="ml-auto flex h-9 items-center gap-2 rounded-lg border border-border px-3 text-xs text-muted-foreground hover:text-foreground"
+            className=" flex h-9 items-center gap-2 rounded-lg border border-border px-3 text-xs text-muted-foreground hover:text-foreground"
           >
             <Search className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Search markets</span>

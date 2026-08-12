@@ -1,10 +1,10 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { DashboardShell, PAGE_TITLES, type PageId } from "@/components/dashboard/DashboardShell";
 import { QuoteTable } from "@/components/dashboard/QuoteTable";
 import { AIView } from "@/components/dashboard/AIView";
-import { AlertsView, MarketStrip, NewsView, SettingsView, type Alert } from "@/components/dashboard/views";
+import { AlertsView, MarketStrip, NewsView, SettingsView, WatchlistView } from "@/components/dashboard/views";
 import {
   CalendarsView,
   EstimatesView,
@@ -16,17 +16,12 @@ import {
   OptionsView,
   OwnershipView,
   ProScreenerView,
+  SavedScreenerView,
   SectorsView,
 } from "@/components/dashboard/tool-views";
-import {
-  CRYPTO_SYMS,
-  ETF_SYMS,
-  FOREX_SYMS,
-  IN_SYMS,
-  PRESETS,
-  SCREENER_SYMS,
-  US_SYMS,
-} from "@/lib/universe";
+import { useAppState, useMarketConfig } from "@/lib/app-state";
+import { CRYPTO_SYMS, FOREX_SYMS } from "@/lib/markets";
+import { PRESETS } from "@/lib/universe";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -49,43 +44,18 @@ export const Route = createFileRoute("/")({
   component: Dashboard,
 });
 
-function useLocal<T>(key: string, initial: T) {
-  const [value, setValue] = useState<T>(initial);
-  useEffect(() => {
-    try {
-      const raw = window.localStorage.getItem(key);
-      if (raw) setValue(JSON.parse(raw) as T);
-    } catch {
-      /* ignore */
-    }
-  }, [key]);
-  const update = (next: T) => {
-    setValue(next);
-    try {
-      window.localStorage.setItem(key, JSON.stringify(next));
-    } catch {
-      /* ignore */
-    }
-  };
-  return [value, update] as const;
-}
-
 function Dashboard() {
   const [page, setPage] = useState<PageId>("markets");
-  const [watchlist, setWatchlist] = useLocal<string[]>("sc:watchlist", ["AAPL", "NVDA", "TCS.NS"]);
-  const [alerts, setAlerts] = useLocal<Alert[]>("sc:alerts", []);
-  const [refreshSeconds, setRefreshSeconds] = useLocal<number>("sc:refresh", 60);
+  const { watchSymbols, toggleWatchlist, alerts, screeners } = useAppState();
+  const cfg = useMarketConfig();
   const qc = useQueryClient();
-
-  const toggleWatch = (symbol: string) =>
-    setWatchlist(watchlist.includes(symbol) ? watchlist.filter((s) => s !== symbol) : [...watchlist, symbol]);
 
   const table = (symbols: string[], filter?: Parameters<typeof QuoteTable>[0]["filter"], empty?: string) => (
     <QuoteTable
       symbols={symbols}
       {...(filter ? { filter } : {})}
-      watchlist={watchlist}
-      onToggleWatch={toggleWatch}
+      watchlist={watchSymbols}
+      onToggleWatch={toggleWatchlist}
       {...(empty ? { emptyLabel: empty } : {})}
     />
   );
@@ -93,36 +63,34 @@ function Dashboard() {
   const body = () => {
     if (page === "ai") return <AIView />;
 
+    const saved = page.startsWith("saved:") ? screeners.find((s) => `saved:${s.id}` === page) : undefined;
+
     const inner = (() => {
+      if (saved) return <SavedScreenerView filters={saved.filters} name={saved.name} />;
       switch (page) {
         case "markets":
           return (
             <div className="space-y-6">
               <MarketStrip />
+              <MoversView />
               <div>
-                <h2 className="mb-3 text-sm font-semibold text-foreground">Your watchlist</h2>
-                {table(watchlist, undefined, "Star a ticker to track it here.")}
-              </div>
-              <div>
-                <h2 className="mb-3 text-sm font-semibold text-foreground">Most active</h2>
-                {table(US_SYMS.slice(0, 6))}
+                <h2 className="mb-3 text-sm font-semibold text-foreground">Sector & industry detail</h2>
+                <SectorsView />
               </div>
             </div>
           );
-        case "screener":
-          return table(SCREENER_SYMS);
         case "watchlist":
-          return table(watchlist, undefined, "Star a ticker to track it here.");
+          return <WatchlistView />;
         case "news":
           return <NewsView />;
         case "alerts":
-          return <AlertsView alerts={alerts} setAlerts={setAlerts} />;
+          return <AlertsView />;
         case "settings":
-          return <SettingsView refreshSeconds={refreshSeconds} onRefreshSeconds={setRefreshSeconds} />;
+          return <SettingsView />;
         case "equities":
-          return table([...US_SYMS, ...IN_SYMS]);
+          return table(cfg.equities);
         case "etfs":
-          return table(ETF_SYMS);
+          return table(cfg.etfs);
         case "crypto":
           return table(CRYPTO_SYMS);
         case "forex":
@@ -149,13 +117,12 @@ function Dashboard() {
           return <FilingsView />;
         case "newssearch":
           return <NewsSearchView />;
-
         case "logout":
           return <p className="text-sm text-muted-foreground">Local session only — your data stays in this browser.</p>;
         default: {
           const preset = PRESETS[page];
           if (preset) return table(preset.syms, preset.test, "No tickers match this preset right now.");
-          return table(SCREENER_SYMS);
+          return <ProScreenerView />;
         }
       }
     })();
@@ -163,7 +130,9 @@ function Dashboard() {
     return (
       <div className="h-full overflow-y-auto px-6 py-6">
         <div className="mx-auto w-full max-w-6xl space-y-6">
-          <h1 className="text-lg font-semibold tracking-tight text-foreground">{PAGE_TITLES[page] ?? "Markets"}</h1>
+          <h1 className="text-lg font-semibold tracking-tight text-foreground">
+            {saved?.name ?? PAGE_TITLES[page] ?? "Markets"}
+          </h1>
           {inner}
         </div>
       </div>
@@ -174,7 +143,7 @@ function Dashboard() {
     <DashboardShell
       page={page}
       onNavigate={setPage}
-      watchlistCount={watchlist.length}
+      watchlistCount={watchSymbols.length}
       alertCount={alerts.filter((a) => a.enabled).length}
       onRefresh={() => void qc.invalidateQueries()}
     >
