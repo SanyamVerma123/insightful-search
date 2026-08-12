@@ -110,14 +110,26 @@ export const runEquityScreener = createServerFn({ method: "POST" })
     (d: {
       region?: string;
       minMarketCap?: number;
+      maxMarketCap?: number;
+      minPe?: number;
       maxPe?: number;
       minGrowth?: number;
       minDividendYield?: number;
+      minPrice?: number;
+      maxPrice?: number;
+      minVolume?: number;
+      minChangePercent?: number;
+      maxChangePercent?: number;
+      exchange?: string;
+      nameContains?: string;
       sector?: string;
       size?: number;
+      sortField?: string;
+      sortAscending?: boolean;
     }) => d,
   )
   .handler(({ data }) => fetchScreenEquities(data));
+
 
 export const runEtfScreener = createServerFn({ method: "GET" })
   .inputValidator((d: { region?: string; size?: number }) => d)
