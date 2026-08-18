@@ -25,6 +25,15 @@ import type {
   StockSummary,
 } from "./finance-types";
 import { MARKET_INDICES } from "./finance-types";
+import { CRYPTO_SYMS, FOREX_SYMS, MARKETS } from "./markets";
+import { UNIVERSE } from "./universe";
+import {
+  canonicalIndustryKey,
+  canonicalSectorKey,
+  providerTaxonomyLabel,
+  taxonomyMatches,
+} from "./sector-normalize";
+import { profilesForRegion, type StaticSectorProfile } from "./sector-universe";
 
 const INCOME_ORDER = [
   "Total Revenue",
@@ -67,6 +76,47 @@ function pick(raw: unknown, key: string): unknown {
   return isRecord(raw) ? raw[key] : null;
 }
 
+const INDIA_SYMBOL_NAMES: Record<string, string> = {
+  "APOLLOHOSP.NS": "Apollo Hospitals Enterprise",
+  "APOLLOHOSP.BO": "Apollo Hospitals Enterprise",
+  "CIPLA.NS": "Cipla",
+  "CIPLA.BO": "Cipla",
+  "HCLTECH.NS": "HCL Technologies",
+  "HCLTECH.BO": "HCL Technologies",
+  "WIPRO.NS": "Wipro",
+  "WIPRO.BO": "Wipro",
+  "TECHM.NS": "Tech Mahindra",
+  "TECHM.BO": "Tech Mahindra",
+  "LT.NS": "Larsen & Toubro",
+  "LT.BO": "Larsen & Toubro",
+  "LGEINDIA.NS": "LG Electronics India",
+  "OFSS.NS": "Oracle Financial Services Software",
+  "OFSS.BO": "Oracle Financial Services Software",
+  "PAYTM.NS": "One97 Communications (Paytm)",
+  "PAYTM.BO": "One97 Communications (Paytm)",
+  "DIXON.NS": "Dixon Technologies",
+  "DIXON.BO": "Dixon Technologies",
+  "PERSISTENT.NS": "Persistent Systems",
+  "COFORGE.NS": "Coforge",
+  "MPHASIS.NS": "Mphasis",
+  "INFY.NS": "Infosys",
+  "TCS.NS": "Tata Consultancy Services",
+  "RELIANCE.NS": "Reliance Industries",
+  "HDFCBANK.NS": "HDFC Bank",
+  "ICICIBANK.NS": "ICICI Bank",
+  "ITC.NS": "ITC",
+};
+
+function displayNameForSymbol(symbol: string, name?: string | null) {
+  const clean = name?.trim();
+  if (clean) return clean;
+  return (
+    INDIA_SYMBOL_NAMES[symbol.toUpperCase()] ??
+    UNIVERSE[symbol]?.name ??
+    symbol.replace(/\\.(NS|BO)$/i, "").replace(/[-_]+/g, " ")
+  );
+}
+
 function buildQuote(symbol: string, snapshot: unknown, info: unknown): Quote {
   const s = isRecord(snapshot) ? snapshot : {};
   const r = isRecord(info) ? info : {};
@@ -76,7 +126,10 @@ function buildQuote(symbol: string, snapshot: unknown, info: unknown): Quote {
   const shares = num(s["shares"]);
   return {
     symbol,
-    name: str(r["shortName"]) ?? str(r["longName"]) ?? symbol,
+    name: displayNameForSymbol(
+      symbol,
+      str(r["shortName"]) ?? str(r["longName"]) ?? str(r["displayName"]),
+    ),
     exchange: str(s["exchange"]) ?? str(r["exchange"]),
     currency: str(s["currency"]) ?? str(r["currency"]),
     price,
@@ -86,7 +139,8 @@ function buildQuote(symbol: string, snapshot: unknown, info: unknown): Quote {
     dayLow: num(s["day_low"]),
     yearHigh: num(s["year_high"]) ?? num(r["fiftyTwoWeekHigh"]),
     yearLow: num(s["year_low"]) ?? num(r["fiftyTwoWeekLow"]),
-    marketCap: num(s["market_cap"]) ?? num(r["marketCap"]) ?? (shares && price ? shares * price : null),
+    marketCap:
+      num(s["market_cap"]) ?? num(r["marketCap"]) ?? (shares && price ? shares * price : null),
     change,
     changePercent: change !== null && prev ? (change / prev) * 100 : null,
   };
@@ -127,7 +181,11 @@ export async function fetchSummary(symbol: string): Promise<StockSummary> {
   return { quote: buildQuote(symbol, snapshot, details), ratios: buildRatios(details) };
 }
 
-export async function fetchHistory(symbol: string, period: string, interval: string): Promise<Candle[]> {
+export async function fetchHistory(
+  symbol: string,
+  period: string,
+  interval: string,
+): Promise<Candle[]> {
   const raw = await callMcpTool("get_price_history", {
     ticker: symbol,
     period,
@@ -168,30 +226,74 @@ export async function fetchSearchNews(query: string, count = 15): Promise<NewsIt
   return normalizeNews(pick(raw, "news") ?? pick(raw, "data"));
 }
 
-export async function fetchSearch(query: string): Promise<SearchResult[]> {
-  const raw = await callMcpTool("search_tickers", { query, max_results: 8, news_count: 0 });
+export async function fetchSearch(
+  query: string,
+  assetClass: "equities" | "etfs" | "crypto" | "forex" = "equities",
+  region = "us",
+): Promise<SearchResult[]> {
+  const raw = await callMcpTool("search_tickers", {
+    query,
+    max_results: 8,
+    news_count: 0,
+    asset_class: assetClass,
+    region,
+  });
   const list = rows(pick(raw, "quotes") ?? pick(raw, "results") ?? pick(raw, "data"));
   const mapped = list
     .map((q) => ({
       symbol: str(q["symbol"]) ?? "",
-      name: str(q["longname"]) ?? str(q["shortname"]) ?? str(q["name"]) ?? "",
+      name: displayNameForSymbol(
+        str(q["symbol"]) ?? "",
+        str(q["longname"]) ?? str(q["shortname"]) ?? str(q["name"]) ?? str(q["companyName"]),
+      ),
       exchange: str(q["exchDisp"]) ?? str(q["exchange"]),
       type: str(q["typeDisp"]) ?? str(q["type"]),
+      assetClass,
       sector: str(q["sectorDisp"]) ?? null,
     }))
     .filter((q) => q.symbol.length > 0);
   if (mapped.length > 0) return mapped.slice(0, 8);
 
-  const resolved = await callMcpTool("resolve_ticker", { query, max_results: 8 }).catch(() => null);
-  return rows(pick(resolved, "all_matches"))
+  const resolvedRaw = await callMcpTool("resolve_ticker", {
+    query,
+    region,
+    asset_class: assetClass,
+    max_results: 8,
+  }).catch(() => null);
+  const resolved = rows(pick(resolvedRaw, "all_matches"))
     .map((q) => ({
       symbol: str(q["symbol"]) ?? "",
-      name: str(q["name"]) ?? "",
+      name: displayNameForSymbol(str(q["symbol"]) ?? "", str(q["name"])),
       exchange: str(q["exchange"]),
       type: str(q["type"]),
+      assetClass,
       sector: null,
     }))
     .filter((q) => q.symbol.length > 0)
+    .slice(0, 8);
+  if (resolved.length > 0) return resolved;
+
+  const staticSymbols =
+    assetClass === "crypto"
+      ? CRYPTO_SYMS
+      : assetClass === "forex"
+        ? FOREX_SYMS
+        : assetClass === "etfs"
+          ? region.toLowerCase() === "in"
+            ? MARKETS.IN.etfs
+            : MARKETS.US.etfs
+          : [];
+  const needle = query.trim().toLowerCase();
+  return staticSymbols
+    .filter((symbol) => symbol.toLowerCase().includes(needle))
+    .map((symbol) => ({
+      symbol,
+      name: symbol,
+      exchange: assetClass === "crypto" ? "Crypto" : assetClass === "forex" ? "FX" : "ETF",
+      type: assetClass,
+      assetClass,
+      sector: null,
+    }))
     .slice(0, 8);
 }
 
@@ -215,7 +317,12 @@ export async function fetchFinancials(
         ? "get_balance_sheet"
         : "get_cash_flow";
   const raw = await callMcpTool(tool, { ticker: symbol, freq: quarterly ? "quarterly" : "yearly" });
-  const order = statement === "income" ? INCOME_ORDER : statement === "balance" ? BALANCE_ORDER : CASHFLOW_ORDER;
+  const order =
+    statement === "income"
+      ? INCOME_ORDER
+      : statement === "balance"
+        ? BALANCE_ORDER
+        : CASHFLOW_ORDER;
   return toStatementTable(pick(raw, "statement") ?? pick(raw, "data"), order);
 }
 
@@ -235,7 +342,9 @@ export async function fetchAnalyst(symbol: string): Promise<AnalystSummary> {
     strongSell: num(r["strongSell"]) ?? 0,
   }));
 
-  const t = isRecord(pick(targets, "targets")) ? (pick(targets, "targets") as Record<string, unknown>) : {};
+  const t = isRecord(pick(targets, "targets"))
+    ? (pick(targets, "targets") as Record<string, unknown>)
+    : {};
 
   const earningsHistory = rows(pick(history, "data")).map((r) => ({
     date: (str(r["quarter"]) ?? "").slice(0, 10),
@@ -273,7 +382,9 @@ export async function fetchUpgrades(symbol: string) {
 
 export async function fetchCalendar(symbol: string): Promise<CalendarInfo> {
   const raw = await callMcpTool("get_calendar", { ticker: symbol });
-  const c = isRecord(pick(raw, "calendar")) ? (pick(raw, "calendar") as Record<string, unknown>) : {};
+  const c = isRecord(pick(raw, "calendar"))
+    ? (pick(raw, "calendar") as Record<string, unknown>)
+    : {};
   const earnings = c["Earnings Date"];
   return {
     earningsDate: Array.isArray(earnings) ? str(earnings[0]) : str(earnings),
@@ -307,13 +418,22 @@ export async function fetchCorporateActions(symbol: string): Promise<CorporateAc
   return { dividends, splits };
 }
 
-export async function fetchCompare(symbols: string, period: string, interval: string): Promise<CompareSeries[]> {
+export async function fetchCompare(
+  symbols: string,
+  period: string,
+  interval: string,
+): Promise<CompareSeries[]> {
   const tickers = symbols
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean)
     .slice(0, 20);
-  const raw = await callMcpTool("batch_price_history", { tickers, period, interval, max_rows: 400 });
+  const raw = await callMcpTool("batch_price_history", {
+    tickers,
+    period,
+    interval,
+    max_rows: 400,
+  });
   const results = pick(raw, "results");
   if (!isRecord(results)) return [];
   return tickers
@@ -348,8 +468,13 @@ export async function fetchQuotes(symbols: string[]): Promise<Quote[]> {
   return out;
 }
 
-export async function fetchMarketStrip(indices?: { key: string; label: string }[]): Promise<IndexQuote[]> {
-  const list = indices && indices.length > 0 ? indices : MARKET_INDICES.map((i) => ({ key: i.key, label: i.label }));
+export async function fetchMarketStrip(
+  indices?: { key: string; label: string }[],
+): Promise<IndexQuote[]> {
+  const list =
+    indices && indices.length > 0
+      ? indices
+      : MARKET_INDICES.map((i) => ({ key: i.key, label: i.label }));
   const tickers = list.map((i) => i.key);
 
   const raw = await callMcpTool("batch_price_history", {
@@ -378,20 +503,36 @@ export async function fetchMarketStrip(indices?: { key: string; label: string }[
 
 /* ---------- Discovery: screeners, movers, sectors, calendars ---------- */
 
+function normalizeScreenerRow(q: Record<string, unknown>): ScreenerRow {
+  const symbol = str(q["symbol"]) ?? str(q["ticker"]) ?? "";
+  const sector = str(q["sector"]) ?? str(q["sectorDisp"]) ?? str(q["sector_name"]);
+  const industry = str(q["industry"]) ?? str(q["industryDisp"]) ?? str(q["industry_name"]);
+  const name =
+    str(q["shortName"]) ??
+    str(q["longName"]) ??
+    str(q["displayName"]) ??
+    str(q["name"]) ??
+    str(q["companyName"]) ??
+    str(q["company_name"]);
+  return {
+    symbol,
+    name: displayNameForSymbol(symbol, name),
+    price: num(q["regularMarketPrice"]) ?? num(q["regular_market_price"]),
+    changePercent: num(q["regularMarketChangePercent"]) ?? num(q["regular_market_change_percent"]),
+    marketCap: num(q["marketCap"]) ?? num(q["market_cap"]),
+    volume: num(q["regularMarketVolume"]) ?? num(q["regular_market_volume"]),
+    peRatio: num(q["trailingPE"]) ?? num(q["trailing_pe"]),
+    exchange: str(q["fullExchangeName"]) ?? str(q["exchange"]) ?? str(q["exchangeName"]),
+    sector: sector ? canonicalSectorKey(sector) : null,
+    industry: industry ? canonicalIndustryKey(industry) : null,
+    currency: str(q["currency"]) ?? str(q["currencyCode"]),
+    rating: str(q["averageAnalystRating"]) ?? str(q["rating"]),
+  };
+}
+
 function toScreenerRows(raw: unknown): ScreenerRow[] {
   return rows(raw)
-    .map((q) => ({
-      symbol: str(q["symbol"]) ?? "",
-      name: str(q["shortName"]) ?? str(q["longName"]) ?? str(q["displayName"]) ?? "",
-      price: num(q["regularMarketPrice"]),
-      changePercent: num(q["regularMarketChangePercent"]),
-      marketCap: num(q["marketCap"]),
-      volume: num(q["regularMarketVolume"]),
-      peRatio: num(q["trailingPE"]),
-      exchange: str(q["fullExchangeName"]) ?? str(q["exchange"]),
-      sector: str(q["sector"]) ?? str(q["sectorDisp"]),
-      rating: str(q["averageAnalystRating"]),
-    }))
+    .map((q) => normalizeScreenerRow(q))
     .filter((q) => q.symbol.length > 0);
 }
 
@@ -401,9 +542,36 @@ export async function fetchPredefinedScreeners(): Promise<string[]> {
   return Array.isArray(list) ? list.map(String) : [];
 }
 
-export async function fetchScreenPredefined(name: string, size = 25): Promise<ScreenerRow[]> {
-  const raw = await callMcpTool("screen_predefined", { name, size });
-  return toScreenerRows(pick(raw, "quotes") ?? pick(raw, "data"));
+export async function fetchScreenPredefined(
+  name: string,
+  size = 25,
+  region = "us",
+): Promise<ScreenerRow[]> {
+  const raw = await callMcpTool("screen_predefined", { name, size, region });
+  const normalized = await enrichScreenerRows(
+    toScreenerRows(pick(raw, "quotes") ?? pick(raw, "data")),
+  );
+  const inIndia = region.toLowerCase() === "in";
+  const regionRows = normalized.filter((row) =>
+    inIndia ? /\.(NS|BO)$/i.test(row.symbol) : !/\.(NS|BO)$/i.test(row.symbol),
+  );
+  if (regionRows.length > 0) return regionRows;
+
+  const fallbackSort = name.includes("loser")
+    ? { sortField: "percentchange", sortAscending: true }
+    : name.includes("active")
+      ? { sortField: "dayvolume", sortAscending: false }
+      : { sortField: "percentchange", sortAscending: false };
+  const screened = await fetchScreenEquities({ region, size, ...fallbackSort });
+  if (screened.length > 0) return screened;
+  const fallback = await fallbackRegionRows(region, size);
+  return [...fallback].sort((a, b) => {
+    if (name.includes("active")) return (b.volume ?? -Infinity) - (a.volume ?? -Infinity);
+    return (
+      ((b.changePercent ?? -Infinity) - (a.changePercent ?? -Infinity)) *
+      (name.includes("loser") ? -1 : 1)
+    );
+  });
 }
 
 export type EquityScreenInput = {
@@ -422,62 +590,175 @@ export type EquityScreenInput = {
   exchange?: string;
   nameContains?: string;
   sector?: string;
+  industry?: string;
   size?: number;
   sortField?: string;
   sortAscending?: boolean;
 };
 
-/** Yahoo's screener expects Title Case sector names, not the hyphenated sector keys. */
-function screenerSector(value?: string): string | undefined {
+function providerScreenValue(value: string | undefined, kind: "sector" | "industry") {
   if (!value) return undefined;
-  if (!value.includes("-")) return value;
-  return value
-    .split("-")
-    .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
-    .join(" ");
+  return providerTaxonomyLabel(value, kind) || value;
 }
 
-export async function fetchScreenEquities(input: EquityScreenInput): Promise<ScreenerRow[]> {
-  const raw = await callMcpTool("screen_equities", {
-    region: input.region ?? "us",
-    min_market_cap: input.minMarketCap,
-    max_pe: input.maxPe,
-    min_growth: input.minGrowth,
-    min_dividend_yield: input.minDividendYield,
-    sector: screenerSector(input.sector),
-    size: Math.min(250, Math.max(1, input.size ?? 25)),
-    sort_field: input.sortField,
-    sort_ascending: input.sortAscending,
-  });
-  const all = toScreenerRows(pick(raw, "quotes") ?? pick(raw, "data"));
-  const nameQuery = input.nameContains?.toLowerCase();
+function filterScreenerRows(all: ScreenerRow[], input: EquityScreenInput) {
+  const nameQuery = input.nameContains?.trim().toLowerCase();
   return all.filter((r) => {
-    if (input.maxMarketCap !== undefined && (r.marketCap ?? Infinity) > input.maxMarketCap) return false;
+    if (input.region?.toLowerCase() === "in" && !/\.(NS|BO)$/i.test(r.symbol)) return false;
+    if (input.region?.toLowerCase() !== "in" && /\.(NS|BO)$/i.test(r.symbol)) return false;
+    if (input.maxMarketCap !== undefined && (r.marketCap ?? Infinity) > input.maxMarketCap)
+      return false;
     if (input.minPe !== undefined && (r.peRatio ?? -Infinity) < input.minPe) return false;
+    if (input.maxPe !== undefined && (r.peRatio ?? Infinity) > input.maxPe) return false;
+    if (input.minMarketCap !== undefined && (r.marketCap ?? -Infinity) < input.minMarketCap)
+      return false;
     if (input.minPrice !== undefined && (r.price ?? -Infinity) < input.minPrice) return false;
     if (input.maxPrice !== undefined && (r.price ?? Infinity) > input.maxPrice) return false;
     if (input.minVolume !== undefined && (r.volume ?? -Infinity) < input.minVolume) return false;
-    if (input.minChangePercent !== undefined && (r.changePercent ?? -Infinity) < input.minChangePercent) return false;
-    if (input.maxChangePercent !== undefined && (r.changePercent ?? Infinity) > input.maxChangePercent) return false;
-    if (input.exchange && !(r.exchange ?? "").toLowerCase().includes(input.exchange.toLowerCase())) return false;
+    if (
+      input.minChangePercent !== undefined &&
+      (r.changePercent ?? -Infinity) < input.minChangePercent
+    )
+      return false;
+    if (
+      input.maxChangePercent !== undefined &&
+      (r.changePercent ?? Infinity) > input.maxChangePercent
+    )
+      return false;
+    if (input.exchange && !(r.exchange ?? "").toLowerCase().includes(input.exchange.toLowerCase()))
+      return false;
+    if (input.sector && !taxonomyMatches(r.sector, input.sector, "sector")) return false;
+    if (input.industry && !taxonomyMatches(r.industry, input.industry, "industry")) return false;
     if (nameQuery && !`${r.symbol} ${r.name}`.toLowerCase().includes(nameQuery)) return false;
     return true;
   });
 }
 
-export type TickerMeta = { symbol: string; name: string; sector: string; industry: string; currency: string | null };
+function screenerRequest(input: EquityScreenInput, includeClassification: boolean) {
+  return {
+    region: input.region ?? "us",
+    min_market_cap: input.minMarketCap,
+    max_market_cap: input.maxMarketCap,
+    min_pe: input.minPe,
+    max_pe: input.maxPe,
+    min_growth: input.minGrowth,
+    min_dividend_yield: input.minDividendYield,
+    min_price: input.minPrice,
+    max_price: input.maxPrice,
+    min_volume: input.minVolume,
+    min_change_percent: input.minChangePercent,
+    max_change_percent: input.maxChangePercent,
+    exchange: input.exchange,
+    name_contains: input.nameContains,
+    ...(includeClassification
+      ? {
+          sector: providerScreenValue(input.sector, "sector"),
+          industry: providerScreenValue(input.industry, "industry"),
+        }
+      : {}),
+    size: Math.min(250, Math.max(1, input.size ?? 25)),
+    sort_field: input.sortField,
+    sort_ascending: input.sortAscending,
+  };
+}
+
+async function enrichScreenerRows(rowsToEnrich: ScreenerRow[]) {
+  const unresolved = rowsToEnrich.filter((row) => !row.sector || !row.industry).slice(0, 40);
+  if (unresolved.length === 0) return rowsToEnrich;
+  const metadata = await fetchClassify(unresolved.map((row) => row.symbol));
+  return rowsToEnrich.map((row) => {
+    const match = metadata.find((item) => item.symbol === row.symbol);
+    if (!match) return row;
+    return {
+      ...row,
+      name: displayNameForSymbol(row.symbol, row.name),
+      sector: row.sector ?? canonicalSectorKey(match.sector),
+      industry: row.industry ?? canonicalIndustryKey(match.industry),
+    };
+  });
+}
+
+async function quotesToStaticRows(profiles: StaticSectorProfile[], size: number) {
+  const quotes = await fetchQuotes(profiles.slice(0, size).map((item) => item.symbol));
+  const quoteBySymbol = new Map(quotes.map((quote) => [quote.symbol, quote]));
+  return profiles.flatMap((item) => {
+    const quote = quoteBySymbol.get(item.symbol);
+    if (!quote) return [];
+    return [
+      {
+        symbol: item.symbol,
+        name: displayNameForSymbol(item.symbol, quote.name || item.name),
+        price: quote.price,
+        changePercent: quote.changePercent,
+        marketCap: quote.marketCap,
+        volume: null,
+        peRatio: null,
+        exchange: quote.exchange,
+        sector: item.sector,
+        industry: item.industry,
+        currency: quote.currency,
+        rating: null,
+      } satisfies ScreenerRow,
+    ];
+  });
+}
+
+async function fallbackSectorRows(input: EquityScreenInput) {
+  const profiles = profilesForRegion(input.region ?? "us").filter((profile) => {
+    const sectorMatch = !input.sector || taxonomyMatches(profile.sector, input.sector, "sector");
+    const industryMatch =
+      !input.industry || taxonomyMatches(profile.industry, input.industry, "industry");
+    return sectorMatch && industryMatch;
+  });
+  return quotesToStaticRows(profiles, input.size ?? 25);
+}
+
+async function fallbackRegionRows(region: string, size: number) {
+  return quotesToStaticRows(profilesForRegion(region), size);
+}
+
+export async function fetchScreenEquities(input: EquityScreenInput): Promise<ScreenerRow[]> {
+  const raw = await callMcpTool("screen_equities", screenerRequest(input, true));
+  let all = await enrichScreenerRows(toScreenerRows(pick(raw, "quotes") ?? pick(raw, "data")));
+  let filtered = filterScreenerRows(all, input);
+  if (filtered.length > 0 || (!input.sector && !input.industry)) return filtered;
+
+  const broadRaw = await callMcpTool("screen_equities", screenerRequest(input, false));
+  all = await enrichScreenerRows(
+    toScreenerRows(pick(broadRaw, "quotes") ?? pick(broadRaw, "data")),
+  );
+  filtered = filterScreenerRows(all, input);
+  if (filtered.length > 0) return filtered;
+  if (input.sector || input.industry) {
+    return filterScreenerRows(await fallbackSectorRows(input), input);
+  }
+  return filtered;
+}
+
+export type TickerMeta = {
+  symbol: string;
+  name: string;
+  sector: string;
+  industry: string;
+  currency: string | null;
+};
 
 /** Sector / industry classification used to auto-group the watchlist. */
 export async function fetchClassify(symbols: string[]): Promise<TickerMeta[]> {
   const settled = await Promise.allSettled(
     symbols.slice(0, 40).map(async (symbol) => {
       const raw = await callMcpTool("get_company_info", { ticker: symbol });
-      const info = isRecord(pick(raw, "info")) ? (pick(raw, "info") as Record<string, unknown>) : {};
+      const info = isRecord(pick(raw, "info"))
+        ? (pick(raw, "info") as Record<string, unknown>)
+        : {};
       return {
         symbol,
-        name: str(info["shortName"]) ?? str(info["longName"]) ?? symbol,
-        sector: str(info["sector"]) ?? guessSector(symbol),
-        industry: str(info["industry"]) ?? "Other",
+        name: displayNameForSymbol(
+          symbol,
+          str(info["shortName"]) ?? str(info["longName"]) ?? str(info["displayName"]),
+        ),
+        sector: canonicalSectorKey(str(info["sector"]) ?? guessSector(symbol)) || "",
+        industry: canonicalIndustryKey(str(info["industry"]) ?? "") || "",
         currency: str(info["currency"]),
       } satisfies TickerMeta;
     }),
@@ -497,7 +778,10 @@ export type WatchNews = NewsItem & { symbol: string };
 /** Headlines across every watchlist ticker, newest first. */
 export async function fetchWatchlistNews(symbols: string[], perTicker = 5): Promise<WatchNews[]> {
   if (symbols.length === 0) return [];
-  const raw = await callMcpTool("batch_news", { tickers: symbols.slice(0, 25), count: perTicker }).catch(() => null);
+  const raw = await callMcpTool("batch_news", {
+    tickers: symbols.slice(0, 25),
+    count: perTicker,
+  }).catch(() => null);
   const results = pick(raw, "results");
   const out: WatchNews[] = [];
   if (isRecord(results)) {
@@ -507,13 +791,32 @@ export async function fetchWatchlistNews(symbols: string[], perTicker = 5): Prom
       for (const item of items) out.push({ ...item, symbol });
     }
   }
-  return out.sort((a, b) => new Date(b.pubDate ?? 0).getTime() - new Date(a.pubDate ?? 0).getTime());
+  return out.sort(
+    (a, b) => new Date(b.pubDate ?? 0).getTime() - new Date(a.pubDate ?? 0).getTime(),
+  );
 }
-
 
 export async function fetchScreenEtfs(region = "us", size = 25): Promise<ScreenerRow[]> {
   const raw = await callMcpTool("screen_etfs", { region, size });
-  return toScreenerRows(pick(raw, "quotes") ?? pick(raw, "data"));
+  const rowsForRegion = toScreenerRows(pick(raw, "quotes") ?? pick(raw, "data"));
+  if (rowsForRegion.length > 0) return rowsForRegion;
+
+  const fallbackSymbols = region.toLowerCase() === "in" ? MARKETS.IN.etfs : MARKETS.US.etfs;
+  const quotes = await fetchQuotes(fallbackSymbols.slice(0, size));
+  return quotes.map((q) => ({
+    symbol: q.symbol,
+    name: q.name,
+    price: q.price,
+    changePercent: q.changePercent,
+    marketCap: q.marketCap,
+    volume: null,
+    peRatio: null,
+    exchange: q.exchange,
+    sector: "ETF",
+    industry: "ETF",
+    currency: q.currency,
+    rating: null,
+  }));
 }
 
 export async function fetchScreenFunds(size = 25): Promise<ScreenerRow[]> {
@@ -559,7 +862,9 @@ export async function fetchSectors(): Promise<string[]> {
 
 export async function fetchSectorOverview(sectorKey: string, region = "US") {
   const raw = await callMcpTool("get_sector_overview", { sector_key: sectorKey, region });
-  const o = isRecord(pick(raw, "overview")) ? (pick(raw, "overview") as Record<string, unknown>) : {};
+  const o = isRecord(pick(raw, "overview"))
+    ? (pick(raw, "overview") as Record<string, unknown>)
+    : {};
   return {
     name: str(pick(raw, "name")) ?? sectorKey,
     description: str(o["description"]),

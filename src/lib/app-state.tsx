@@ -11,11 +11,16 @@ import { useServerFn } from "@tanstack/react-start";
 import { classifySymbols } from "@/lib/finance.functions";
 import { MARKETS, type MarketId } from "@/lib/markets";
 
+export type AssetClass = "equities" | "etfs" | "crypto" | "forex";
+export type Theme = "terminal" | "light" | "paper";
+
 export type WatchItem = {
   symbol: string;
   name: string;
   sector: string;
   industry: string;
+  marketId: MarketId;
+  assetClass: AssetClass;
 };
 
 export type Alert = { id: string; symbol: string; above: boolean; price: number; enabled: boolean };
@@ -23,6 +28,7 @@ export type Alert = { id: string; symbol: string; above: boolean; price: number;
 export type ScreenerFilters = {
   region: string;
   sector: string;
+  industry?: string;
   size: number;
   minMarketCap: string;
   maxMarketCap: string;
@@ -44,6 +50,7 @@ export type ScreenerFilters = {
 export const EMPTY_FILTERS: ScreenerFilters = {
   region: "us",
   sector: "",
+  industry: "",
   size: 50,
   minMarketCap: "",
   maxMarketCap: "",
@@ -62,13 +69,46 @@ export const EMPTY_FILTERS: ScreenerFilters = {
   sortAscending: false,
 };
 
-export type SavedScreener = { id: string; name: string; filters: ScreenerFilters };
+export type SavedScreener = {
+  id: string;
+  name: string;
+  filters: ScreenerFilters;
+  marketId?: MarketId;
+  assetClass?: AssetClass;
+};
 
-export type ApiKeys = { openrouter: string; lovable: string };
+export type AIProviderId = "openrouter" | "kilo" | "groq" | "together" | "deepseek" | "opencode";
+
+export type CustomAIModel = {
+  id: string;
+  label: string;
+  provider: AIProviderId;
+};
+
+export type ApiKeys = {
+  lovable?: string;
+  openrouter: string;
+  openrouterFallback?: string;
+  kilo: string;
+  kiloFallback?: string;
+  groq: string;
+  groqFallback?: string;
+  together: string;
+  togetherFallback?: string;
+  deepseek: string;
+  deepseekFallback?: string;
+  opencode: string;
+  opencodeFallback?: string;
+  tinyfish: string;
+  preferredModel?: string;
+  customModels?: CustomAIModel[];
+};
 
 type State = {
   market: MarketId;
   setMarket: (m: MarketId) => void;
+  assetClass: AssetClass;
+  setAssetClass: (assetClass: AssetClass) => void;
   watchlist: WatchItem[];
   isWatched: (symbol: string) => boolean;
   addToWatchlist: (symbol: string, name?: string) => void;
@@ -84,6 +124,10 @@ type State = {
   setApiKeys: (k: ApiKeys) => void;
   refreshSeconds: number;
   setRefreshSeconds: (n: number) => void;
+  theme: Theme;
+  setTheme: (theme: Theme) => void;
+  aiPrefill: string | null;
+  setAiPrefill: (prompt: string | null) => void;
 };
 
 const Ctx = createContext<State | null>(null);
@@ -105,44 +149,172 @@ function save<T>(key: string, value: T) {
   }
 }
 
+function normalizeApiKeys(raw: unknown): ApiKeys {
+  const item = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  const text = (key: string) => (typeof item[key] === "string" ? item[key] : "");
+  const providers: AIProviderId[] = [
+    "openrouter",
+    "kilo",
+    "groq",
+    "together",
+    "deepseek",
+    "opencode",
+  ];
+  const customModels = Array.isArray(item["customModels"])
+    ? item["customModels"].flatMap((entry) => {
+        if (!entry || typeof entry !== "object") return [];
+        const candidate = entry as Record<string, unknown>;
+        const id = typeof candidate["id"] === "string" ? candidate["id"].trim() : "";
+        const label = typeof candidate["label"] === "string" ? candidate["label"].trim() : "";
+        const provider = candidate["provider"];
+        if (
+          !id ||
+          !label ||
+          typeof provider !== "string" ||
+          !providers.includes(provider as AIProviderId)
+        ) {
+          return [];
+        }
+        return [{ id, label, provider: provider as AIProviderId }];
+      })
+    : [];
+  return {
+    openrouter: text("openrouter"),
+    openrouterFallback: text("openrouterFallback"),
+    kilo: text("kilo"),
+    kiloFallback: text("kiloFallback"),
+    groq: text("groq"),
+    groqFallback: text("groqFallback"),
+    together: text("together"),
+    togetherFallback: text("togetherFallback"),
+    deepseek: text("deepseek"),
+    deepseekFallback: text("deepseekFallback"),
+    opencode: text("opencode"),
+    opencodeFallback: text("opencodeFallback"),
+    tinyfish: text("tinyfish"),
+    preferredModel:
+      typeof item["preferredModel"] === "string" && item["preferredModel"]
+        ? item["preferredModel"]
+        : "openrouter:openai/gpt-4o-mini",
+    customModels,
+  };
+}
+
+function inferScope(symbol: string): { marketId: MarketId; assetClass: AssetClass } {
+  if (symbol.endsWith("-USD")) return { marketId: "US", assetClass: "crypto" };
+  if (symbol.endsWith("=X")) return { marketId: "US", assetClass: "forex" };
+  if (symbol.endsWith(".NS") || symbol.endsWith(".BO"))
+    return { marketId: "IN", assetClass: "equities" };
+  return { marketId: "US", assetClass: "equities" };
+}
+
+function normalizeWatchlist(raw: unknown): WatchItem[] {
+  if (!Array.isArray(raw)) return DEFAULT_WATCH;
+  return raw.flatMap((entry) => {
+    if (!entry || typeof entry !== "object") return [];
+    const item = entry as Record<string, unknown>;
+    const symbol = typeof item["symbol"] === "string" ? item["symbol"].toUpperCase() : "";
+    if (!symbol) return [];
+    const inferred = inferScope(symbol);
+    const marketId =
+      item["marketId"] === "US" || item["marketId"] === "IN" ? item["marketId"] : inferred.marketId;
+    const assetClass = ["equities", "etfs", "crypto", "forex"].includes(String(item["assetClass"]))
+      ? (item["assetClass"] as AssetClass)
+      : inferred.assetClass;
+    return [
+      {
+        symbol,
+        name: typeof item["name"] === "string" ? item["name"] : symbol,
+        sector: typeof item["sector"] === "string" ? item["sector"] : "",
+        industry: typeof item["industry"] === "string" ? item["industry"] : "",
+        marketId: marketId as MarketId,
+        assetClass,
+      },
+    ];
+  });
+}
+
 const DEFAULT_WATCH: WatchItem[] = [
-  { symbol: "AAPL", name: "Apple Inc.", sector: "", industry: "" },
-  { symbol: "NVDA", name: "NVIDIA Corp.", sector: "", industry: "" },
-  { symbol: "TCS.NS", name: "Tata Consultancy Services", sector: "", industry: "" },
+  {
+    symbol: "AAPL",
+    name: "Apple Inc.",
+    sector: "",
+    industry: "",
+    marketId: "US",
+    assetClass: "equities",
+  },
+  {
+    symbol: "NVDA",
+    name: "NVIDIA Corp.",
+    sector: "",
+    industry: "",
+    marketId: "US",
+    assetClass: "equities",
+  },
+  {
+    symbol: "TCS.NS",
+    name: "Tata Consultancy Services",
+    sector: "",
+    industry: "",
+    marketId: "IN",
+    assetClass: "equities",
+  },
 ];
 
 export function AppStateProvider({ children }: { children: ReactNode }) {
   const [market, setMarketState] = useState<MarketId>("US");
-  const [watchlist, setWatchlist] = useState<WatchItem[]>(DEFAULT_WATCH);
+  const [assetClass, setAssetClassState] = useState<AssetClass>("equities");
+  const [allWatchlist, setAllWatchlist] = useState<WatchItem[]>(DEFAULT_WATCH);
   const [alerts, setAlertsState] = useState<Alert[]>([]);
-  const [screeners, setScreeners] = useState<SavedScreener[]>([]);
-  const [apiKeys, setApiKeysState] = useState<ApiKeys>({ openrouter: "", lovable: "" });
+  const [allScreeners, setAllScreeners] = useState<SavedScreener[]>([]);
+  const [apiKeys, setApiKeysState] = useState<ApiKeys>({
+    openrouter: "",
+    kilo: "",
+    groq: "",
+    together: "",
+    deepseek: "",
+    opencode: "",
+    tinyfish: "",
+    preferredModel: "openrouter:openai/gpt-4o-mini",
+    customModels: [],
+  });
   const [refreshSeconds, setRefreshState] = useState(60);
+  const [theme, setThemeState] = useState<Theme>("terminal");
+  const [aiPrefill, setAiPrefillState] = useState<string | null>(null);
   const classify = useServerFn(classifySymbols);
 
   useEffect(() => {
     setMarketState(load<MarketId>("sc:market", "US"));
-    setWatchlist(load<WatchItem[]>("sc:watchlist2", DEFAULT_WATCH));
+    setAssetClassState(load<AssetClass>("sc:asset-class", "equities"));
+    setAllWatchlist(normalizeWatchlist(load<unknown>("sc:watchlist2", DEFAULT_WATCH)));
     setAlertsState(load<Alert[]>("sc:alerts", []));
-    setScreeners(load<SavedScreener[]>("sc:screeners", []));
-    setApiKeysState(load<ApiKeys>("sc:apikeys", { openrouter: "", lovable: "" }));
+    setAllScreeners(load<SavedScreener[]>("sc:screeners", []));
+    setApiKeysState(normalizeApiKeys(load<unknown>("sc:apikeys", null)));
     setRefreshState(load<number>("sc:refresh", 60));
+    setThemeState(load<Theme>("sc:theme", "terminal"));
   }, []);
 
-  /* Auto-categorise new watchlist entries by sector / industry. */
   useEffect(() => {
-    const pending = watchlist.filter((w) => !w.sector).map((w) => w.symbol);
+    document.documentElement.dataset["theme"] = theme;
+    document.documentElement.classList.toggle("light", theme === "light");
+    document.documentElement.classList.toggle("paper", theme === "paper");
+  }, [theme]);
+
+  useEffect(() => {
+    const pending = allWatchlist
+      .filter((w) => w.assetClass === "equities" && !w.sector)
+      .map((w) => w.symbol);
     if (pending.length === 0) return;
     let cancelled = false;
     void classify({ data: { symbols: pending.join(",") } })
       .then((meta) => {
         if (cancelled || meta.length === 0) return;
-        setWatchlist((prev) => {
+        setAllWatchlist((prev) => {
           const next = prev.map((w) => {
             const m = meta.find((x) => x.symbol === w.symbol);
             if (!m) return w;
             return {
-              symbol: w.symbol,
+              ...w,
               name: m.name || w.name || w.symbol,
               sector: m.sector || "Uncategorised",
               industry: m.industry || "Other",
@@ -156,47 +328,108 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [watchlist, classify]);
+  }, [allWatchlist, classify]);
 
   const persistWatch = useCallback((next: WatchItem[]) => {
-    setWatchlist(next);
+    setAllWatchlist(next);
     save("sc:watchlist2", next);
   }, []);
 
   const value = useMemo<State>(() => {
-    const symbols = watchlist.map((w) => w.symbol);
+    const scopedWatchlist = allWatchlist.filter(
+      (w) => w.marketId === market && w.assetClass === assetClass,
+    );
+    const scopedScreeners = allScreeners.filter(
+      (s) => (s.marketId ?? "US") === market && (s.assetClass ?? "equities") === assetClass,
+    );
+    const symbols = scopedWatchlist.map((w) => w.symbol);
     return {
       market,
       setMarket: (m) => {
         setMarketState(m);
         save("sc:market", m);
       },
-      watchlist,
+      assetClass,
+      setAssetClass: (next) => {
+        setAssetClassState(next);
+        save("sc:asset-class", next);
+      },
+      watchlist: scopedWatchlist,
       watchSymbols: symbols,
       isWatched: (s) => symbols.includes(s),
       addToWatchlist: (symbol, name) => {
-        if (symbols.includes(symbol)) return;
-        persistWatch([...watchlist, { symbol, name: name ?? symbol, sector: "", industry: "" }]);
+        const normalized = symbol.toUpperCase();
+        if (
+          allWatchlist.some(
+            (w) => w.symbol === normalized && w.marketId === market && w.assetClass === assetClass,
+          )
+        )
+          return;
+        persistWatch([
+          ...allWatchlist,
+          {
+            symbol: normalized,
+            name: name ?? normalized,
+            sector: "",
+            industry: "",
+            marketId: market,
+            assetClass,
+          },
+        ]);
       },
-      removeFromWatchlist: (symbol) => persistWatch(watchlist.filter((w) => w.symbol !== symbol)),
+      removeFromWatchlist: (symbol) =>
+        persistWatch(
+          allWatchlist.filter(
+            (w) => !(w.symbol === symbol && w.marketId === market && w.assetClass === assetClass),
+          ),
+        ),
       toggleWatchlist: (symbol, name) => {
-        if (symbols.includes(symbol)) persistWatch(watchlist.filter((w) => w.symbol !== symbol));
-        else persistWatch([...watchlist, { symbol, name: name ?? symbol, sector: "", industry: "" }]);
+        const normalized = symbol.toUpperCase();
+        const exists = allWatchlist.some(
+          (w) => w.symbol === normalized && w.marketId === market && w.assetClass === assetClass,
+        );
+        persistWatch(
+          exists
+            ? allWatchlist.filter(
+                (w) =>
+                  !(
+                    w.symbol === normalized &&
+                    w.marketId === market &&
+                    w.assetClass === assetClass
+                  ),
+              )
+            : [
+                ...allWatchlist,
+                {
+                  symbol: normalized,
+                  name: name ?? normalized,
+                  sector: "",
+                  industry: "",
+                  marketId: market,
+                  assetClass,
+                },
+              ],
+        );
       },
       alerts,
       setAlerts: (a) => {
         setAlertsState(a);
         save("sc:alerts", a);
       },
-      screeners,
+      screeners: scopedScreeners,
       saveScreener: (s) => {
-        const next = [...screeners.filter((x) => x.id !== s.id), s];
-        setScreeners(next);
+        const nextScreener: SavedScreener = {
+          ...s,
+          marketId: s.marketId ?? market,
+          assetClass: s.assetClass ?? assetClass,
+        };
+        const next = [...allScreeners.filter((x) => x.id !== s.id), nextScreener];
+        setAllScreeners(next);
         save("sc:screeners", next);
       },
       deleteScreener: (id) => {
-        const next = screeners.filter((x) => x.id !== id);
-        setScreeners(next);
+        const next = allScreeners.filter((s) => s.id !== id);
+        setAllScreeners(next);
         save("sc:screeners", next);
       },
       apiKeys,
@@ -209,8 +442,26 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         setRefreshState(n);
         save("sc:refresh", n);
       },
+      theme,
+      setTheme: (next) => {
+        setThemeState(next);
+        save("sc:theme", next);
+      },
+      aiPrefill,
+      setAiPrefill: setAiPrefillState,
     };
-  }, [market, watchlist, alerts, screeners, apiKeys, refreshSeconds, persistWatch]);
+  }, [
+    market,
+    assetClass,
+    allWatchlist,
+    alerts,
+    allScreeners,
+    apiKeys,
+    refreshSeconds,
+    theme,
+    aiPrefill,
+    persistWatch,
+  ]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

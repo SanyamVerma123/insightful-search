@@ -7,8 +7,12 @@
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
 export default defineConfig({
+  // The sandbox exposes port 8080 through a temporary *.manus.computer hostname.
+  // Allow that proxy host so the public preview is not rejected by Vite's host check.
   vite: {
-    server: { allowedHosts: true },
+    server: {
+      allowedHosts: true,
+    },
   },
   tanstackStart: {
     // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).

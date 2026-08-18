@@ -27,9 +27,13 @@ export function MarketStrip() {
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
       {(data ?? []).map((ix) => (
         <div key={ix.key} className="rounded-2xl border border-border bg-card p-4">
-          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{ix.label}</p>
+          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            {ix.label}
+          </p>
           <p className="tabular mt-1 text-xl font-semibold text-foreground">
-            {ix.last === null ? "—" : ix.last.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+            {ix.last === null
+              ? "—"
+              : ix.last.toLocaleString(undefined, { maximumFractionDigits: 2 })}
           </p>
           <DeltaBadge value={ix.changePercent} size="sm" />
           <div className="mt-2">
@@ -79,7 +83,9 @@ export function WatchlistView() {
         <section key={sector} className="space-y-2">
           <div className="flex items-center gap-2">
             <h2 className="text-sm font-semibold text-foreground">{sector}</h2>
-            <span className="rounded-full bg-accent px-2 py-0.5 text-[10px] text-muted-foreground">{items.length}</span>
+            <span className="rounded-full bg-accent px-2 py-0.5 text-[10px] text-muted-foreground">
+              {items.length}
+            </span>
           </div>
           <div className="flex flex-wrap gap-2">
             {items.map((w) => (
@@ -87,11 +93,19 @@ export function WatchlistView() {
                 key={w.symbol}
                 className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-xs text-muted-foreground"
               >
-                <Link to="/stock/$symbol" params={{ symbol: w.symbol }} className="font-medium text-foreground">
+                <Link
+                  to="/stock/$symbol"
+                  params={{ symbol: w.symbol }}
+                  className="font-medium text-foreground"
+                >
                   {w.symbol}
                 </Link>
                 <span className="hidden sm:inline">{w.industry || "—"}</span>
-                <button type="button" onClick={() => removeFromWatchlist(w.symbol)} className="hover:text-negative">
+                <button
+                  type="button"
+                  onClick={() => removeFromWatchlist(w.symbol)}
+                  className="hover:text-negative"
+                >
                   <Trash2 className="h-3 w-3" />
                 </button>
               </span>
@@ -129,9 +143,7 @@ export function NewsView() {
     staleTime: 120_000,
   });
 
-  const items = symbol
-    ? (single ?? []).map((n) => ({ ...n, symbol }))
-    : (feed ?? []);
+  const items = symbol ? (single ?? []).map((n) => ({ ...n, symbol })) : (feed ?? []);
   const busy = symbol ? loadingSingle : isLoading;
 
   return (
@@ -147,7 +159,9 @@ export function NewsView() {
           onClick={() => setSymbol(null)}
           className={cn(
             "rounded-full border px-3 py-1.5 text-xs",
-            symbol ? "border-border text-muted-foreground hover:text-foreground" : "border-primary/50 bg-primary/10 text-primary",
+            symbol
+              ? "border-border text-muted-foreground hover:text-foreground"
+              : "border-primary/50 bg-primary/10 text-primary",
           )}
         >
           Watchlist feed
@@ -170,7 +184,9 @@ export function NewsView() {
             className="block px-5 py-4 transition-colors hover:bg-accent/40"
           >
             <p className="text-sm font-medium text-foreground">
-              <span className="mr-2 rounded bg-accent px-1.5 py-0.5 text-[10px] text-muted-foreground">{n.symbol}</span>
+              <span className="mr-2 rounded bg-accent px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                {n.symbol}
+              </span>
               {n.title}
             </p>
             <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{n.summary}</p>
@@ -253,14 +269,19 @@ export function AlertsView() {
           <div key={a.id} className="flex items-center gap-3 px-5 py-3.5">
             <span className="text-sm font-semibold text-foreground">{a.symbol}</span>
             <span className="text-sm text-muted-foreground">
-              {a.above ? "rises above" : "falls below"} <span className="tabular text-foreground">{a.price}</span>
+              {a.above ? "rises above" : "falls below"}{" "}
+              <span className="tabular text-foreground">{a.price}</span>
             </span>
             <button
               type="button"
-              onClick={() => setAlerts(alerts.map((x) => (x.id === a.id ? { ...x, enabled: !x.enabled } : x)))}
+              onClick={() =>
+                setAlerts(alerts.map((x) => (x.id === a.id ? { ...x, enabled: !x.enabled } : x)))
+              }
               className={cn(
                 "ml-auto rounded-full border px-2.5 py-1 text-[11px]",
-                a.enabled ? "border-positive/40 text-positive" : "border-border text-muted-foreground",
+                a.enabled
+                  ? "border-positive/40 text-positive"
+                  : "border-border text-muted-foreground",
               )}
             >
               {a.enabled ? "Active" : "Paused"}
@@ -282,8 +303,16 @@ export function AlertsView() {
 /* ---------------- Settings ---------------- */
 
 export function SettingsView() {
-  const { refreshSeconds, setRefreshSeconds, market, setMarket, apiKeys, setApiKeys, screeners, deleteScreener } =
-    useAppState();
+  const {
+    refreshSeconds,
+    setRefreshSeconds,
+    market,
+    setMarket,
+    apiKeys,
+    setApiKeys,
+    screeners,
+    deleteScreener,
+  } = useAppState();
   const [openrouter, setOpenrouter] = useState(apiKeys.openrouter);
   const [lovable, setLovable] = useState(apiKeys.lovable);
   const [saved, setSaved] = useState(false);
@@ -317,7 +346,8 @@ export function SettingsView() {
         </div>
         {!MARKETS[market].supportsFilings && (
           <p className="mt-2 text-xs text-muted-foreground">
-            SEC filings and ESG scores are unavailable for Indian listings, so those tools are hidden.
+            SEC filings and ESG scores are unavailable for Indian listings, so those tools are
+            hidden.
           </p>
         )}
       </div>
@@ -325,7 +355,8 @@ export function SettingsView() {
       <div className="rounded-2xl border border-border bg-card p-5">
         <p className="text-sm font-medium text-foreground">API keys</p>
         <p className="mt-1 text-xs text-muted-foreground">
-          Stored only in this browser and sent with your chat requests. Leave blank to use the built-in keys.
+          Stored only in this browser and sent with your chat requests. Leave blank to use the
+          built-in keys.
         </p>
         <label className="mt-3 block text-xs text-muted-foreground">
           OpenRouter API key
@@ -350,7 +381,11 @@ export function SettingsView() {
         <button
           type="button"
           onClick={() => {
-            setApiKeys({ openrouter: openrouter.trim(), lovable: lovable.trim() });
+            setApiKeys({
+              ...apiKeys,
+              openrouter: openrouter.trim(),
+              lovable: lovable?.trim() ?? "",
+            });
             setSaved(true);
             window.setTimeout(() => setSaved(false), 1800);
           }}
@@ -362,7 +397,9 @@ export function SettingsView() {
 
       <div className="rounded-2xl border border-border bg-card p-5">
         <p className="text-sm font-medium text-foreground">Live data refresh</p>
-        <p className="mt-1 text-xs text-muted-foreground">How often quote tables re-poll the market data service.</p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          How often quote tables re-poll the market data service.
+        </p>
         <div className="mt-3 flex gap-2">
           {[30, 60, 120, 300].map((s) => (
             <button

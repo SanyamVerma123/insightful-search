@@ -58,9 +58,27 @@ export type SearchResult = {
 };
 
 export type AnalystSummary = {
-  distribution: { period: string; strongBuy: number; buy: number; hold: number; sell: number; strongSell: number }[];
-  targets: { current: number | null; low: number | null; mean: number | null; median: number | null; high: number | null };
-  earningsHistory: { date: string; actual: number | null; estimate: number | null; surprisePercent: number | null }[];
+  distribution: {
+    period: string;
+    strongBuy: number;
+    buy: number;
+    hold: number;
+    sell: number;
+    strongSell: number;
+  }[];
+  targets: {
+    current: number | null;
+    low: number | null;
+    mean: number | null;
+    median: number | null;
+    high: number | null;
+  };
+  earningsHistory: {
+    date: string;
+    actual: number | null;
+    estimate: number | null;
+    surprisePercent: number | null;
+  }[];
 };
 
 export type CalendarInfo = {
@@ -100,6 +118,8 @@ export type ScreenerRow = {
   peRatio: number | null;
   exchange: string | null;
   sector: string | null;
+  industry?: string | null;
+  currency?: string | null;
   rating: string | null;
 };
 
