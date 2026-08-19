@@ -279,7 +279,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     customModels: [],
   });
   const [refreshSeconds, setRefreshState] = useState(60);
-  const [theme, setThemeState] = useState<Theme>("terminal");
+  const [theme, setThemeState] = useState<Theme>("paper");
   const [aiPrefill, setAiPrefillState] = useState<string | null>(null);
   const classify = useServerFn(classifySymbols);
 
@@ -291,7 +291,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     setAllScreeners(load<SavedScreener[]>("sc:screeners", []));
     setApiKeysState(normalizeApiKeys(load<unknown>("sc:apikeys", null)));
     setRefreshState(load<number>("sc:refresh", 60));
-    setThemeState(load<Theme>("sc:theme", "terminal"));
+    setThemeState(load<Theme>("sc:theme", "paper"));
   }, []);
 
   useEffect(() => {

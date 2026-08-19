@@ -49,75 +49,132 @@ export function MarketStrip() {
 
 export function WatchlistView() {
   const { watchlist, addToWatchlist, removeFromWatchlist, watchSymbols } = useAppState();
-
   const groups = useMemo(() => {
     const map = new Map<string, typeof watchlist>();
-    for (const w of watchlist) {
-      const key = w.sector || "Categorising…";
-      map.set(key, [...(map.get(key) ?? []), w]);
+    for (const item of watchlist) {
+      const key = item.sector || "Uncategorised";
+      map.set(key, [...(map.get(key) ?? []), item]);
     }
     return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]));
   }, [watchlist]);
+  const [selectedSector, setSelectedSector] = useState("");
+  const activeSector =
+    selectedSector && groups.some(([sector]) => sector === selectedSector)
+      ? selectedSector
+      : (groups[0]?.[0] ?? "");
+  const activeItems = groups.find(([sector]) => sector === activeSector)?.[1] ?? [];
 
   return (
     <div className="space-y-5">
-      <div className="rounded-2xl border border-border bg-card p-4">
-        <p className="mb-2 text-sm font-medium text-foreground">Add a stock to your watchlist</p>
+      <section className="rounded-3xl border border-border bg-card/80 p-6 shadow-sm">
+        <div className="flex items-start gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-primary/20 bg-primary/10 text-primary">
+            <Star className="h-5 w-5" />
+          </span>
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
+              Watchlist intelligence
+            </p>
+            <h2 className="mt-1 text-2xl font-semibold tracking-tight text-foreground">
+              Keep the important names close
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              Your watchlist powers alerts, news feeds, and ticker-scoped research tools across the
+              terminal.
+            </p>
+          </div>
+        </div>
+      </section>
+      <div className="grid gap-4 md:grid-cols-3">
+        {[
+          { label: "Watchlist", value: watchlist.length, note: "Tracked companies" },
+          { label: "Groups", value: groups.length, note: "Sector categories" },
+          { label: "Research tools", value: 4, note: "Alerts, news, options, ownership" },
+        ].map((item) => (
+          <div key={item.label} className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+              {item.label}
+            </p>
+            <p className="mt-3 text-2xl font-semibold text-foreground">{item.value}</p>
+            <p className="mt-2 text-xs text-muted-foreground">{item.note}</p>
+          </div>
+        ))}
+      </div>
+      <section className="rounded-3xl border border-border bg-card p-6 shadow-sm">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h3 className="text-base font-semibold text-foreground">Build your watchlist</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Track the companies that matter to your next decision.
+            </p>
+          </div>
+          <span className="rounded-full border border-positive/30 bg-positive/10 px-2.5 py-1 text-[10px] text-positive">
+            Live data
+          </span>
+        </div>
         <TickerAutocomplete
-          className="max-w-md"
+          className="mt-4 max-w-xl"
           onSelect={(symbol, name) => addToWatchlist(symbol, name)}
           placeholder="Search any company or ticker…"
         />
         <p className="mt-2 text-xs text-muted-foreground">
           New tickers are auto-categorised by sector and industry from live company data.
         </p>
-      </div>
-
+      </section>
+      {groups.length > 0 && (
+        <>
+          <div className="no-scrollbar flex gap-2 overflow-x-auto rounded-2xl border border-border bg-card p-2">
+            {groups.map(([sector, items]) => (
+              <button
+                key={sector}
+                type="button"
+                onClick={() => setSelectedSector(sector)}
+                className={cn(
+                  "shrink-0 rounded-full px-4 py-2 text-xs",
+                  activeSector === sector
+                    ? "border border-primary/30 bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {sector} <span className="ml-1 opacity-60">{items.length}</span>
+              </button>
+            ))}
+          </div>
+          <section>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
+              Selected watchlist sector
+            </p>
+            <div className="mt-1 flex items-baseline gap-2">
+              <h3 className="text-xl font-semibold text-foreground">{activeSector}</h3>
+              <span className="text-xs text-muted-foreground">
+                {activeItems.length} tracked name{activeItems.length === 1 ? "" : "s"}
+              </span>
+            </div>
+            <div className="mt-3 flex items-center justify-end text-[11px] text-muted-foreground">
+              <span className="mr-1 h-2 w-2 rounded-full bg-positive" />
+              Refreshing silently
+            </div>
+            <div className="mt-1">
+              {activeItems.length > 0 ? (
+                <QuoteTable
+                  symbols={activeItems.map((item) => item.symbol)}
+                  watchlist={watchSymbols}
+                  onToggleWatch={(symbol) => removeFromWatchlist(symbol)}
+                />
+              ) : (
+                <p className="rounded-2xl border border-border bg-card p-8 text-sm text-muted-foreground">
+                  No tracked names in this sector.
+                </p>
+              )}
+            </div>
+          </section>
+        </>
+      )}
       {groups.length === 0 && (
         <p className="rounded-2xl border border-border bg-card p-8 text-sm text-muted-foreground">
           Your watchlist is empty — search above to add your first ticker.
         </p>
       )}
-
-      {groups.map(([sector, items]) => (
-        <section key={sector} className="space-y-2">
-          <div className="flex items-center gap-2">
-            <h2 className="text-sm font-semibold text-foreground">{sector}</h2>
-            <span className="rounded-full bg-accent px-2 py-0.5 text-[10px] text-muted-foreground">
-              {items.length}
-            </span>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {items.map((w) => (
-              <span
-                key={w.symbol}
-                className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-xs text-muted-foreground"
-              >
-                <Link
-                  to="/stock/$symbol"
-                  params={{ symbol: w.symbol }}
-                  className="font-medium text-foreground"
-                >
-                  {w.symbol}
-                </Link>
-                <span className="hidden sm:inline">{w.industry || "—"}</span>
-                <button
-                  type="button"
-                  onClick={() => removeFromWatchlist(w.symbol)}
-                  className="hover:text-negative"
-                >
-                  <Trash2 className="h-3 w-3" />
-                </button>
-              </span>
-            ))}
-          </div>
-          <QuoteTable
-            symbols={items.map((i) => i.symbol)}
-            watchlist={watchSymbols}
-            onToggleWatch={(s) => removeFromWatchlist(s)}
-          />
-        </section>
-      ))}
     </div>
   );
 }
@@ -312,22 +369,94 @@ export function SettingsView() {
     setApiKeys,
     screeners,
     deleteScreener,
+    theme,
+    setTheme,
   } = useAppState();
-  const [openrouter, setOpenrouter] = useState(apiKeys.openrouter);
-  const [lovable, setLovable] = useState(apiKeys.lovable);
+  const [draft, setDraft] = useState(() => ({
+    openrouter: apiKeys.openrouter,
+    openrouterFallback: apiKeys.openrouterFallback ?? "",
+    kilo: apiKeys.kilo,
+    kiloFallback: apiKeys.kiloFallback ?? "",
+    groq: apiKeys.groq,
+    groqFallback: apiKeys.groqFallback ?? "",
+    together: apiKeys.together,
+    togetherFallback: apiKeys.togetherFallback ?? "",
+    deepseek: apiKeys.deepseek,
+    deepseekFallback: apiKeys.deepseekFallback ?? "",
+    opencode: apiKeys.opencode,
+    opencodeFallback: apiKeys.opencodeFallback ?? "",
+    tinyfish: apiKeys.tinyfish,
+  }));
+  const [preferredModel, setPreferredModel] = useState(
+    apiKeys.preferredModel ?? "openrouter:openai/gpt-4o-mini",
+  );
+  const [customProvider, setCustomProvider] = useState<
+    "openrouter" | "kilo" | "groq" | "together" | "deepseek" | "opencode"
+  >("kilo");
+  const [customModelId, setCustomModelId] = useState("");
+  const [customModelLabel, setCustomModelLabel] = useState("");
   const [saved, setSaved] = useState(false);
-
   const field =
-    "mt-2 h-9 w-full rounded-lg border border-border bg-background px-3 text-sm text-foreground outline-none focus:border-primary/60";
+    "mt-1 h-9 w-full rounded-lg border border-border bg-background px-3 text-sm text-foreground outline-none focus:border-primary/60";
+  const modelOptions = [
+    ["openrouter:openai/gpt-4o-mini", "GPT-4o Mini · OpenRouter"],
+    ["kilo:anthropic/claude-sonnet-4.5", "Claude Sonnet 4.5 · Kilo"],
+    ["kilo:nvidia/nemotron-3-ultra-550b-a55b:free", "Nemotron 3 Ultra · Kilo · Free"],
+    ["groq:llama-3.3-70b-versatile", "Llama 3.3 70B · Groq"],
+    ["together:meta-llama/Llama-3.3-70B-Instruct-Turbo", "Llama 3.3 70B Turbo · Together"],
+    ["deepseek:deepseek-chat", "DeepSeek Chat"],
+    ["deepseek:deepseek-reasoner", "DeepSeek Reasoner"],
+    ["opencode:big-pickle", "Big Pickle · OpenCode Zen"],
+  ] as const;
+  const updateDraft = (key: keyof typeof draft, value: string) =>
+    setDraft((previous) => ({ ...previous, [key]: value }));
+  const saveSettings = () => {
+    const { lovable: _lovable, ...withoutLovable } = apiKeys;
+    setApiKeys({
+      ...withoutLovable,
+      ...draft,
+      ...(preferredModel.trim() ? { preferredModel: preferredModel.trim() } : {}),
+    });
+    setSaved(true);
+    window.setTimeout(() => setSaved(false), 1800);
+  };
+  const addCustomModel = () => {
+    const id = customModelId.trim();
+    if (!id) return;
+    const model = {
+      id: id.includes(":") ? id : `${customProvider}:${id}`,
+      label: customModelLabel.trim() || id,
+      provider: customProvider,
+    };
+    setApiKeys({
+      ...apiKeys,
+      customModels: [...(apiKeys.customModels ?? []).filter((item) => item.id !== model.id), model],
+    });
+    setCustomModelId("");
+    setCustomModelLabel("");
+  };
+  const removeCustomModel = (id: string) =>
+    setApiKeys({
+      ...apiKeys,
+      customModels: (apiKeys.customModels ?? []).filter((item) => item.id !== id),
+    });
+  const providers = [
+    ["OpenRouter", "openrouter", "openrouterFallback"],
+    ["Kilo AI", "kilo", "kiloFallback"],
+    ["Groq", "groq", "groqFallback"],
+    ["Together AI", "together", "togetherFallback"],
+    ["DeepSeek", "deepseek", "deepseekFallback"],
+    ["OpenCode Zen", "opencode", "opencodeFallback"],
+  ] as const;
 
   return (
-    <div className="max-w-2xl space-y-4">
+    <div className="max-w-3xl space-y-4">
       <div className="rounded-2xl border border-border bg-card p-5">
         <p className="text-sm font-medium text-foreground">Equity market</p>
         <p className="mt-1 text-xs text-muted-foreground">
-          Switches indices, equities and ETFs across the terminal. Crypto and forex stay global.
+          Switch indices, screeners, heatmaps and terminal context between US and India.
         </p>
-        <div className="mt-3 flex gap-2">
+        <div className="mt-3 flex flex-wrap gap-2">
           {(Object.keys(MARKETS) as MarketId[]).map((id) => (
             <button
               key={id}
@@ -344,78 +473,199 @@ export function SettingsView() {
             </button>
           ))}
         </div>
-        {!MARKETS[market].supportsFilings && (
-          <p className="mt-2 text-xs text-muted-foreground">
-            SEC filings and ESG scores are unavailable for Indian listings, so those tools are
-            hidden.
-          </p>
-        )}
+        <p className="mt-2 text-xs text-muted-foreground">
+          Current market:{" "}
+          <span className="font-medium text-foreground">{MARKETS[market].label}</span>. Crypto and
+          forex remain global.
+        </p>
       </div>
 
       <div className="rounded-2xl border border-border bg-card p-5">
-        <p className="text-sm font-medium text-foreground">API keys</p>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Stored only in this browser and sent with your chat requests. Leave blank to use the
-          built-in keys.
-        </p>
-        <label className="mt-3 block text-xs text-muted-foreground">
-          OpenRouter API key
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-sm font-medium text-foreground">AI providers</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Primary and fallback keys stay local to this browser. No Lovable field is used.
+            </p>
+          </div>
+          <span className="rounded-full border border-positive/30 bg-positive/10 px-2.5 py-1 text-[10px] text-positive">
+            Multi-provider routing
+          </span>
+        </div>
+        <div className="mt-4 grid gap-4 md:grid-cols-2">
+          {providers.map(([label, primary, fallback]) => (
+            <div key={primary} className="rounded-xl border border-border/70 bg-background/40 p-3">
+              <p className="text-xs font-medium text-foreground">{label}</p>
+              <label className="mt-2 block text-[11px] text-muted-foreground">
+                Primary
+                <input
+                  value={draft[primary]}
+                  onChange={(e) => updateDraft(primary, e.target.value)}
+                  type="password"
+                  placeholder="API key"
+                  className={field}
+                />
+              </label>
+              <label className="mt-2 block text-[11px] text-muted-foreground">
+                Fallback
+                <input
+                  value={draft[fallback]}
+                  onChange={(e) => updateDraft(fallback, e.target.value)}
+                  type="password"
+                  placeholder="Optional fallback key"
+                  className={field}
+                />
+              </label>
+            </div>
+          ))}
+        </div>
+        <label className="mt-4 block text-xs text-muted-foreground">
+          TinyFish web-search key
           <input
-            value={openrouter}
-            onChange={(e) => setOpenrouter(e.target.value)}
+            value={draft.tinyfish}
+            onChange={(e) => updateDraft("tinyfish", e.target.value)}
             type="password"
-            placeholder="sk-or-v1-…"
-            className={field}
-          />
-        </label>
-        <label className="mt-3 block text-xs text-muted-foreground">
-          Lovable AI key
-          <input
-            value={lovable}
-            onChange={(e) => setLovable(e.target.value)}
-            type="password"
-            placeholder="Optional override"
+            placeholder="Optional web-search provider key"
             className={field}
           />
         </label>
         <button
           type="button"
-          onClick={() => {
-            setApiKeys({
-              ...apiKeys,
-              openrouter: openrouter.trim(),
-              lovable: lovable?.trim() ?? "",
-            });
-            setSaved(true);
-            window.setTimeout(() => setSaved(false), 1800);
-          }}
-          className="mt-3 h-9 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground"
+          onClick={saveSettings}
+          className="mt-4 h-9 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground"
         >
-          {saved ? "Saved" : "Save keys"}
+          {saved ? "Saved" : "Save provider settings"}
         </button>
       </div>
 
       <div className="rounded-2xl border border-border bg-card p-5">
-        <p className="text-sm font-medium text-foreground">Live data refresh</p>
+        <p className="text-sm font-medium text-foreground">Preferred analyst model</p>
         <p className="mt-1 text-xs text-muted-foreground">
-          How often quote tables re-poll the market data service.
+          Choose the default model used when a new research chat starts.
         </p>
-        <div className="mt-3 flex gap-2">
-          {[30, 60, 120, 300].map((s) => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => setRefreshSeconds(s)}
-              className={cn(
-                "rounded-lg border px-3 py-1.5 text-xs",
-                refreshSeconds === s
-                  ? "border-primary/50 bg-primary/10 text-primary"
-                  : "border-border text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {s}s
-            </button>
+        <select
+          value={preferredModel}
+          onChange={(e) => setPreferredModel(e.target.value)}
+          className={`${field} max-w-xl`}
+        >
+          {modelOptions.map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
           ))}
+          {(apiKeys.customModels ?? []).map((item) => (
+            <option key={item.id} value={item.id}>
+              {item.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="rounded-2xl border border-border bg-card p-5">
+        <p className="text-sm font-medium text-foreground">Custom model registry</p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Add any provider model ID and make it available in the Analyst picker.
+        </p>
+        <div className="mt-3 grid gap-2 md:grid-cols-[150px_1fr_1fr_auto]">
+          <select
+            value={customProvider}
+            onChange={(e) => setCustomProvider(e.target.value as typeof customProvider)}
+            className="h-9 rounded-lg border border-border bg-background px-2 text-xs text-foreground"
+          >
+            {providers.map(([label, id]) => (
+              <option key={id} value={id}>
+                {label}
+              </option>
+            ))}
+          </select>
+          <input
+            value={customModelId}
+            onChange={(e) => setCustomModelId(e.target.value)}
+            placeholder="provider model ID"
+            className={field.replace("mt-1 ", "")}
+          />
+          <input
+            value={customModelLabel}
+            onChange={(e) => setCustomModelLabel(e.target.value)}
+            placeholder="Display label"
+            className={field.replace("mt-1 ", "")}
+          />
+          <button
+            type="button"
+            onClick={addCustomModel}
+            className="h-9 rounded-lg border border-primary/40 px-3 text-xs text-primary"
+          >
+            Add
+          </button>
+        </div>
+        {(apiKeys.customModels ?? []).length > 0 && (
+          <div className="mt-3 space-y-2">
+            {apiKeys.customModels?.map((item) => (
+              <div
+                key={item.id}
+                className="flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-xs"
+              >
+                <span className="font-medium text-foreground">{item.label}</span>
+                <span className="truncate text-muted-foreground">{item.id}</span>
+                <button
+                  type="button"
+                  onClick={() => removeCustomModel(item.id)}
+                  className="ml-auto text-muted-foreground hover:text-negative"
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="rounded-2xl border border-border bg-card p-5">
+          <p className="text-sm font-medium text-foreground">Live data refresh</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            How often quote tables re-poll market data.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {[30, 60, 120, 300].map((s) => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => setRefreshSeconds(s)}
+                className={cn(
+                  "rounded-lg border px-3 py-1.5 text-xs",
+                  refreshSeconds === s
+                    ? "border-primary/50 bg-primary/10 text-primary"
+                    : "border-border text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {s}s
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="rounded-2xl border border-border bg-card p-5">
+          <p className="text-sm font-medium text-foreground">Theme</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Switch between terminal, light and paper treatments.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {(["terminal", "light", "paper"] as const).map((value) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setTheme(value)}
+                className={cn(
+                  "rounded-lg border px-3 py-1.5 text-xs capitalize",
+                  theme === value
+                    ? "border-primary/50 bg-primary/10 text-primary"
+                    : "border-border text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {value}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 

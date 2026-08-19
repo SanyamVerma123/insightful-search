@@ -3,7 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { SiteHeader } from "@/components/finance/SiteHeader";
-import { PriceChart } from "@/components/finance/PriceChart";
+import { TradingViewResearchChart } from "@/components/finance/TradingViewResearchChart";
 import { DeltaBadge } from "@/components/finance/DeltaBadge";
 import {
   getAnalyst,
@@ -37,7 +37,15 @@ export const Route = createFileRoute("/stock/$symbol")({
   component: StockPage,
 });
 
-function Card({ title, children, action }: { title: string; children: React.ReactNode; action?: React.ReactNode }) {
+function Card({
+  title,
+  children,
+  action,
+}: {
+  title: string;
+  children: React.ReactNode;
+  action?: React.ReactNode;
+}) {
   return (
     <section className="overflow-hidden rounded-2xl border border-border bg-card">
       <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
@@ -75,7 +83,11 @@ function StockPage() {
 
   const cfg = RANGES.find((r) => r.key === range)!;
 
-  const { data: summary, isLoading: loadingSummary, error } = useQuery({
+  const {
+    data: summary,
+    isLoading: loadingSummary,
+    error,
+  } = useQuery({
     queryKey: ["summary", symbol],
     queryFn: () => summaryFn({ data: { symbol } }),
     staleTime: 30_000,
@@ -126,7 +138,8 @@ function StockPage() {
         <div className="mx-auto max-w-3xl px-4 py-24 text-center">
           <h1 className="tabular text-2xl font-semibold text-foreground">{symbol}</h1>
           <p className="mt-3 text-sm text-muted-foreground">
-            We couldn't load data for this ticker. Check the symbol (Indian listings need a .NS or .BO suffix).
+            We couldn't load data for this ticker. Check the symbol (Indian listings need a .NS or
+            .BO suffix).
           </p>
         </div>
       </div>
@@ -150,15 +163,25 @@ function StockPage() {
               {loadingSummary ? "Loading…" : (q?.name ?? symbol)}
             </h1>
             <div className="mt-3 flex items-end gap-3">
-              <span className="tabular text-4xl font-semibold text-foreground">{fmtPrice(q?.price, q?.currency)}</span>
-              <DeltaBadge value={q?.changePercent} absolute={q?.change} currency={q?.currency} size="lg" />
+              <span className="tabular text-4xl font-semibold text-foreground">
+                {fmtPrice(q?.price, q?.currency)}
+              </span>
+              <DeltaBadge
+                value={q?.changePercent}
+                absolute={q?.change}
+                currency={q?.currency}
+                size="lg"
+              />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             <Stat label="Open" value={fmtPrice(q?.open, q?.currency)} />
             <Stat label="Prev close" value={fmtPrice(q?.previousClose, q?.currency)} />
             <Stat label="Day range" value={`${fmtNumber(q?.dayLow)} – ${fmtNumber(q?.dayHigh)}`} />
-            <Stat label="52w range" value={`${fmtNumber(q?.yearLow)} – ${fmtNumber(q?.yearHigh)}`} />
+            <Stat
+              label="52w range"
+              value={`${fmtNumber(q?.yearLow)} – ${fmtNumber(q?.yearHigh)}`}
+            />
           </div>
         </div>
 
@@ -187,7 +210,7 @@ function StockPage() {
               }
             >
               <div className={cn(loadingHistory && "opacity-60 transition-opacity")}>
-                <PriceChart candles={history ?? []} currency={q?.currency} />
+                <TradingViewResearchChart symbol={symbol} />
               </div>
             </Card>
 
@@ -245,7 +268,9 @@ function StockPage() {
                     ))}
                   </tbody>
                 </table>
-                {!financials?.rows.length && <p className="py-6 text-sm text-muted-foreground">No statement data.</p>}
+                {!financials?.rows.length && (
+                  <p className="py-6 text-sm text-muted-foreground">No statement data.</p>
+                )}
               </div>
             </Card>
 
@@ -269,10 +294,15 @@ function StockPage() {
                       <span className="tabular w-12 text-xs text-muted-foreground">{d.period}</span>
                       <span className="flex h-2 flex-1 overflow-hidden rounded-full bg-surface">
                         {bars.map((b, i) => (
-                          <span key={i} style={{ width: `${(b.v / total) * 100}%`, background: b.c }} />
+                          <span
+                            key={i}
+                            style={{ width: `${(b.v / total) * 100}%`, background: b.c }}
+                          />
                         ))}
                       </span>
-                      <span className="tabular w-8 text-right text-xs text-muted-foreground">{total}</span>
+                      <span className="tabular w-8 text-right text-xs text-muted-foreground">
+                        {total}
+                      </span>
                     </div>
                   );
                 })}
@@ -286,7 +316,10 @@ function StockPage() {
                           {Object.values(u)
                             .slice(0, 4)
                             .map((cell, j) => (
-                              <td key={j} className="py-2 pr-4 text-muted-foreground first:text-foreground">
+                              <td
+                                key={j}
+                                className="py-2 pr-4 text-muted-foreground first:text-foreground"
+                              >
                                 {cell}
                               </td>
                             ))}
@@ -316,7 +349,9 @@ function StockPage() {
                 <Stat label="Rating" value={r?.recommendationKey ?? "—"} />
               </div>
               {r?.summary && (
-                <p className="mt-4 line-clamp-6 text-sm leading-relaxed text-muted-foreground">{r.summary}</p>
+                <p className="mt-4 line-clamp-6 text-sm leading-relaxed text-muted-foreground">
+                  {r.summary}
+                </p>
               )}
               {(r?.sector || r?.industry) && (
                 <p className="mt-3 text-xs text-muted-foreground">
@@ -333,13 +368,23 @@ function StockPage() {
               </div>
               {!!actions?.dividends.length && (
                 <div className="mt-4">
-                  <p className="mb-2 text-xs uppercase tracking-wider text-muted-foreground">Recent dividends</p>
-                  {actions.dividends.slice(-5).reverse().map((d) => (
-                    <div key={d.date} className="flex justify-between border-b border-border/60 py-1.5 text-sm last:border-0">
-                      <span className="text-muted-foreground">{fmtDate(d.date)}</span>
-                      <span className="tabular text-foreground">{fmtPrice(d.amount, q?.currency)}</span>
-                    </div>
-                  ))}
+                  <p className="mb-2 text-xs uppercase tracking-wider text-muted-foreground">
+                    Recent dividends
+                  </p>
+                  {actions.dividends
+                    .slice(-5)
+                    .reverse()
+                    .map((d) => (
+                      <div
+                        key={d.date}
+                        className="flex justify-between border-b border-border/60 py-1.5 text-sm last:border-0"
+                      >
+                        <span className="text-muted-foreground">{fmtDate(d.date)}</span>
+                        <span className="tabular text-foreground">
+                          {fmtPrice(d.amount, q?.currency)}
+                        </span>
+                      </div>
+                    ))}
                 </div>
               )}
             </Card>
@@ -360,7 +405,9 @@ function StockPage() {
                     </p>
                   </a>
                 ))}
-                {!news?.length && <p className="text-sm text-muted-foreground">No recent headlines.</p>}
+                {!news?.length && (
+                  <p className="text-sm text-muted-foreground">No recent headlines.</p>
+                )}
               </div>
             </Card>
           </div>
