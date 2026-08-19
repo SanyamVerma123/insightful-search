@@ -2,15 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { ExternalLink } from "lucide-react";
-import {
-  Bar,
-  BarChart,
-  Cell,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
+import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import {
   getEstimates,
   getMarketCalendar,
@@ -38,11 +30,20 @@ import { fmtCompact, fmtPrice, timeAgo } from "@/lib/format";
 import { useAppState, useMarketConfig, EMPTY_FILTERS, type ScreenerFilters } from "@/lib/app-state";
 import { SECTOR_INDUSTRIES, SECTOR_KEYS, sectorLabel } from "@/lib/markets";
 import { cn } from "@/lib/utils";
+import { IndustryHeatmap } from "@/components/dashboard/industry-heatmap/IndustryHeatmap";
 
 const field =
   "h-9 rounded-lg border border-border bg-background px-3 text-sm text-foreground outline-none focus:border-primary/60";
 
-function Chip({ active, children, onClick }: { active: boolean; children: React.ReactNode; onClick: () => void }) {
+function Chip({
+  active,
+  children,
+  onClick,
+}: {
+  active: boolean;
+  children: React.ReactNode;
+  onClick: () => void;
+}) {
   return (
     <button
       type="button"
@@ -103,7 +104,11 @@ export function MoversView() {
   const runFn = useServerFn(runPredefinedScreener);
   const [name, setName] = useState("day_gainers");
 
-  const { data: names } = useQuery({ queryKey: ["screeners"], queryFn: () => listFn(), staleTime: 600_000 });
+  const { data: names } = useQuery({
+    queryKey: ["screeners"],
+    queryFn: () => listFn(),
+    staleTime: 600_000,
+  });
   const { data, isLoading } = useQuery({
     queryKey: ["screen", name],
     queryFn: () => runFn({ data: { name, size: 25 } }),
@@ -208,12 +213,17 @@ export function ProScreenerView() {
   const { saveScreener, screeners, deleteScreener } = useAppState();
   const runFn = useServerFn(runEquityScreener);
   const sectorsFn = useServerFn(listSectors);
-  const { data: sectors } = useQuery({ queryKey: ["sectors"], queryFn: () => sectorsFn(), staleTime: 600_000 });
+  const { data: sectors } = useQuery({
+    queryKey: ["sectors"],
+    queryFn: () => sectorsFn(),
+    staleTime: 600_000,
+  });
 
   const [f, setF] = useState<ScreenerFilters>({ ...EMPTY_FILTERS, region: cfg.region });
   const [runs, setRuns] = useState(0);
   const [name, setName] = useState("");
-  const set = <K extends keyof ScreenerFilters>(k: K, v: ScreenerFilters[K]) => setF((p) => ({ ...p, [k]: v }));
+  const set = <K extends keyof ScreenerFilters>(k: K, v: ScreenerFilters[K]) =>
+    setF((p) => ({ ...p, [k]: v }));
 
   const params = toParams(f);
   const { data, isLoading, isFetching } = useQuery({
@@ -230,7 +240,11 @@ export function ProScreenerView() {
         <div className="flex flex-wrap items-end gap-3">
           <label className="text-xs text-muted-foreground">
             Region
-            <select value={f.region} onChange={(e) => set("region", e.target.value)} className={cn(field, "mt-1 block w-24")}>
+            <select
+              value={f.region}
+              onChange={(e) => set("region", e.target.value)}
+              className={cn(field, "mt-1 block w-24")}
+            >
               {["us", "in", "gb", "de", "jp", "hk", "ca", "au", "fr"].map((r) => (
                 <option key={r} value={r}>
                   {r.toUpperCase()}
@@ -240,7 +254,11 @@ export function ProScreenerView() {
           </label>
           <label className="text-xs text-muted-foreground">
             Sector
-            <select value={f.sector} onChange={(e) => set("sector", e.target.value)} className={cn(field, "mt-1 block w-48")}>
+            <select
+              value={f.sector}
+              onChange={(e) => set("sector", e.target.value)}
+              className={cn(field, "mt-1 block w-48")}
+            >
               <option value="">Any sector</option>
               {sectorOptions.map((s) => (
                 <option key={s} value={s}>
@@ -249,28 +267,87 @@ export function ProScreenerView() {
               ))}
             </select>
           </label>
-          <Num label="Min market cap" value={f.minMarketCap} onChange={(v) => set("minMarketCap", v)} width="w-36" />
-          <Num label="Max market cap" value={f.maxMarketCap} onChange={(v) => set("maxMarketCap", v)} width="w-36" />
+          <Num
+            label="Min market cap"
+            value={f.minMarketCap}
+            onChange={(v) => set("minMarketCap", v)}
+            width="w-36"
+          />
+          <Num
+            label="Max market cap"
+            value={f.maxMarketCap}
+            onChange={(v) => set("maxMarketCap", v)}
+            width="w-36"
+          />
           <Num label="Min P/E" value={f.minPe} onChange={(v) => set("minPe", v)} width="w-24" />
           <Num label="Max P/E" value={f.maxPe} onChange={(v) => set("maxPe", v)} width="w-24" />
-          <Num label="Min growth %" value={f.minGrowth} onChange={(v) => set("minGrowth", v)} width="w-28" />
-          <Num label="Min div. yield %" value={f.minDividendYield} onChange={(v) => set("minDividendYield", v)} width="w-32" />
-          <Num label="Min price" value={f.minPrice} onChange={(v) => set("minPrice", v)} width="w-24" />
-          <Num label="Max price" value={f.maxPrice} onChange={(v) => set("maxPrice", v)} width="w-24" />
-          <Num label="Min volume" value={f.minVolume} onChange={(v) => set("minVolume", v)} width="w-32" />
-          <Num label="Min day %" value={f.minChangePercent} onChange={(v) => set("minChangePercent", v)} width="w-24" />
-          <Num label="Max day %" value={f.maxChangePercent} onChange={(v) => set("maxChangePercent", v)} width="w-24" />
+          <Num
+            label="Min growth %"
+            value={f.minGrowth}
+            onChange={(v) => set("minGrowth", v)}
+            width="w-28"
+          />
+          <Num
+            label="Min div. yield %"
+            value={f.minDividendYield}
+            onChange={(v) => set("minDividendYield", v)}
+            width="w-32"
+          />
+          <Num
+            label="Min price"
+            value={f.minPrice}
+            onChange={(v) => set("minPrice", v)}
+            width="w-24"
+          />
+          <Num
+            label="Max price"
+            value={f.maxPrice}
+            onChange={(v) => set("maxPrice", v)}
+            width="w-24"
+          />
+          <Num
+            label="Min volume"
+            value={f.minVolume}
+            onChange={(v) => set("minVolume", v)}
+            width="w-32"
+          />
+          <Num
+            label="Min day %"
+            value={f.minChangePercent}
+            onChange={(v) => set("minChangePercent", v)}
+            width="w-24"
+          />
+          <Num
+            label="Max day %"
+            value={f.maxChangePercent}
+            onChange={(v) => set("maxChangePercent", v)}
+            width="w-24"
+          />
           <label className="text-xs text-muted-foreground">
             Exchange contains
-            <input value={f.exchange} onChange={(e) => set("exchange", e.target.value)} placeholder="NMS, NSI…" className={cn(field, "mt-1 block w-32")} />
+            <input
+              value={f.exchange}
+              onChange={(e) => set("exchange", e.target.value)}
+              placeholder="NMS, NSI…"
+              className={cn(field, "mt-1 block w-32")}
+            />
           </label>
           <label className="text-xs text-muted-foreground">
             Name contains
-            <input value={f.nameContains} onChange={(e) => set("nameContains", e.target.value)} placeholder="any" className={cn(field, "mt-1 block w-36")} />
+            <input
+              value={f.nameContains}
+              onChange={(e) => set("nameContains", e.target.value)}
+              placeholder="any"
+              className={cn(field, "mt-1 block w-36")}
+            />
           </label>
           <label className="text-xs text-muted-foreground">
             Sort by
-            <select value={f.sortField} onChange={(e) => set("sortField", e.target.value)} className={cn(field, "mt-1 block w-44")}>
+            <select
+              value={f.sortField}
+              onChange={(e) => set("sortField", e.target.value)}
+              className={cn(field, "mt-1 block w-44")}
+            >
               {[
                 ["intradaymarketcap", "Market cap"],
                 ["percentchange", "Day change %"],
@@ -295,7 +372,12 @@ export function ProScreenerView() {
               <option value="asc">Ascending</option>
             </select>
           </label>
-          <Num label="Results" value={String(f.size)} onChange={(v) => set("size", Number(v) || 50)} width="w-24" />
+          <Num
+            label="Results"
+            value={String(f.size)}
+            onChange={(v) => set("size", Number(v) || 50)}
+            width="w-24"
+          />
 
           <button
             type="button"
@@ -332,11 +414,22 @@ export function ProScreenerView() {
             Save to presets
           </button>
           {screeners.map((s) => (
-            <span key={s.id} className="inline-flex items-center gap-2 rounded-full border border-border px-3 py-1 text-xs text-muted-foreground">
-              <button type="button" onClick={() => setF(s.filters)} className="hover:text-foreground">
+            <span
+              key={s.id}
+              className="inline-flex items-center gap-2 rounded-full border border-border px-3 py-1 text-xs text-muted-foreground"
+            >
+              <button
+                type="button"
+                onClick={() => setF(s.filters)}
+                className="hover:text-foreground"
+              >
                 {s.name}
               </button>
-              <button type="button" onClick={() => deleteScreener(s.id)} className="hover:text-negative">
+              <button
+                type="button"
+                onClick={() => deleteScreener(s.id)}
+                className="hover:text-negative"
+              >
                 ×
               </button>
             </span>
@@ -396,7 +489,8 @@ export function TableBarChart({
   valueKey?: string;
   height?: number;
 }) {
-  if (!table || table.rows.length === 0) return <p className="p-5 text-sm text-muted-foreground">No data to plot.</p>;
+  if (!table || table.rows.length === 0)
+    return <p className="p-5 text-sm text-muted-foreground">No data to plot.</p>;
   const label = labelKey ?? table.columns[0]!;
   const value =
     valueKey ??
@@ -407,13 +501,19 @@ export function TableBarChart({
     .map((r) => ({ name: r[label] ?? "", value: numeric(r[value]) }))
     .filter((d): d is { name: string; value: number } => d.value !== null)
     .slice(0, 15);
-  if (data.length === 0) return <p className="p-5 text-sm text-muted-foreground">No numeric column to plot.</p>;
+  if (data.length === 0)
+    return <p className="p-5 text-sm text-muted-foreground">No numeric column to plot.</p>;
 
   return (
     <div className="p-4" style={{ height }}>
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={data} layout="vertical" margin={{ left: 24, right: 16, top: 4, bottom: 4 }}>
-          <XAxis type="number" tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} />
+          <XAxis
+            type="number"
+            tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+            axisLine={false}
+            tickLine={false}
+          />
           <YAxis
             type="category"
             dataKey="name"
@@ -484,7 +584,10 @@ export function SectorsView() {
             ["Market cap", fmtCompact(data.marketCap)],
             ["Companies", data.companiesCount?.toLocaleString() ?? "—"],
             ["Industries", data.industriesCount?.toLocaleString() ?? "—"],
-            ["Market weight", data.marketWeight === null ? "—" : `${(data.marketWeight * 100).toFixed(1)}%`],
+            [
+              "Market weight",
+              data.marketWeight === null ? "—" : `${(data.marketWeight * 100).toFixed(1)}%`,
+            ],
           ].map(([label, value]) => (
             <div key={label} className="rounded-2xl border border-border bg-card p-4">
               <p className="text-xs uppercase tracking-wider text-muted-foreground">{label}</p>
@@ -503,10 +606,20 @@ export function SectorsView() {
       <Panel title="Industry performance" subtitle="Relative performance inside the sector">
         <TableBarChart table={data?.industries} />
       </Panel>
+      <Panel
+        title="Industry market weight"
+        subtitle="A responsive mosaic sized by each industry's share of the selected sector"
+      >
+        <IndustryHeatmap table={data?.industries} />
+      </Panel>
 
       <div className="no-scrollbar flex gap-2 overflow-x-auto">
         {(SECTOR_INDUSTRIES[sector] ?? []).map((i) => (
-          <Chip key={i} active={i === industry} onClick={() => setIndustry(i === industry ? null : i)}>
+          <Chip
+            key={i}
+            active={i === industry}
+            onClick={() => setIndustry(i === industry ? null : i)}
+          >
             {sectorLabel(i)}
           </Chip>
         ))}
@@ -563,7 +676,11 @@ export function CalendarsView() {
         ))}
       </div>
       <Panel title={`${CALENDARS.find((c) => c.key === kind)?.label} calendar`}>
-        {isLoading ? <p className="p-5 text-sm text-muted-foreground">Loading calendar…</p> : <DataTable table={data} />}
+        {isLoading ? (
+          <p className="p-5 text-sm text-muted-foreground">Loading calendar…</p>
+        ) : (
+          <DataTable table={data} />
+        )}
       </Panel>
     </div>
   );
@@ -599,7 +716,9 @@ export function GlobalMarketsView() {
         <div className="rounded-2xl border border-border bg-card p-4">
           <p className="text-sm font-medium text-foreground">
             {status.name} ·{" "}
-            <span className={status.status === "open" ? "text-positive" : "text-muted-foreground"}>{status.status}</span>
+            <span className={status.status === "open" ? "text-positive" : "text-muted-foreground"}>
+              {status.status}
+            </span>
           </p>
           <p className="mt-1 text-xs text-muted-foreground">{status.message}</p>
         </div>
@@ -607,8 +726,12 @@ export function GlobalMarketsView() {
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {(summary ?? []).map((q) => (
           <div key={q.name} className="rounded-2xl border border-border bg-card p-4">
-            <p className="truncate text-xs uppercase tracking-wider text-muted-foreground">{q.name}</p>
-            <p className="tabular mt-1 text-lg font-semibold text-foreground">{fmtPrice(q.price)}</p>
+            <p className="truncate text-xs uppercase tracking-wider text-muted-foreground">
+              {q.name}
+            </p>
+            <p className="tabular mt-1 text-lg font-semibold text-foreground">
+              {fmtPrice(q.price)}
+            </p>
             <DeltaBadge value={q.changePercent} size="sm" />
           </div>
         ))}
@@ -655,7 +778,11 @@ export function OptionsView() {
         ))}
       </div>
       <Panel title={`Calls · ${symbol} ${active ?? ""}`}>
-        {isLoading ? <p className="p-5 text-sm text-muted-foreground">Loading chain…</p> : <DataTable table={chain?.calls} />}
+        {isLoading ? (
+          <p className="p-5 text-sm text-muted-foreground">Loading chain…</p>
+        ) : (
+          <DataTable table={chain?.calls} />
+        )}
       </Panel>
       <Panel title={`Puts · ${symbol} ${active ?? ""}`}>
         <DataTable table={chain?.puts} />
@@ -669,7 +796,11 @@ export function OptionsView() {
 export function OwnershipView() {
   const fn = useServerFn(getOwnership);
   const [symbol, setSymbol] = useWatchSymbol();
-  const { data } = useQuery({ queryKey: ["own", symbol], queryFn: () => fn({ data: { symbol } }), staleTime: 300_000 });
+  const { data } = useQuery({
+    queryKey: ["own", symbol],
+    queryFn: () => fn({ data: { symbol } }),
+    staleTime: 300_000,
+  });
   return (
     <div className="space-y-4">
       <WatchSymbolPicker value={symbol} onChange={setSymbol} />
@@ -686,7 +817,10 @@ export function OwnershipView() {
         <DataTable table={data?.funds} />
       </Panel>
       <Panel title="Insider transactions">
-        <DataTable table={data?.insider} empty="No insider activity reported (common outside the US)." />
+        <DataTable
+          table={data?.insider}
+          empty="No insider activity reported (common outside the US)."
+        />
       </Panel>
     </div>
   );
@@ -698,7 +832,11 @@ export function EstimatesView() {
   const estFn = useServerFn(getEstimates);
   const valFn = useServerFn(getValuationMeasures);
   const [symbol, setSymbol] = useWatchSymbol();
-  const { data } = useQuery({ queryKey: ["est", symbol], queryFn: () => estFn({ data: { symbol } }), staleTime: 300_000 });
+  const { data } = useQuery({
+    queryKey: ["est", symbol],
+    queryFn: () => estFn({ data: { symbol } }),
+    staleTime: 300_000,
+  });
   const { data: valuation } = useQuery({
     queryKey: ["val", symbol],
     queryFn: () => valFn({ data: { symbol } }),
@@ -743,7 +881,11 @@ export function FilingsView() {
     queryFn: () => filingsFn({ data: { symbol } }),
     staleTime: 300_000,
   });
-  const { data: esg } = useQuery({ queryKey: ["esg", symbol], queryFn: () => esgFn({ data: { symbol } }), staleTime: 300_000 });
+  const { data: esg } = useQuery({
+    queryKey: ["esg", symbol],
+    queryFn: () => esgFn({ data: { symbol } }),
+    staleTime: 300_000,
+  });
   return (
     <div className="space-y-4">
       <WatchSymbolPicker value={symbol} onChange={setSymbol} />
@@ -780,7 +922,13 @@ export function NewsSearchView() {
       <div className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
         {isLoading && <p className="p-6 text-sm text-muted-foreground">Searching…</p>}
         {(data ?? []).map((n) => (
-          <a key={n.link} href={n.link} target="_blank" rel="noreferrer" className="block px-5 py-4 hover:bg-accent/40">
+          <a
+            key={n.link}
+            href={n.link}
+            target="_blank"
+            rel="noreferrer"
+            className="block px-5 py-4 hover:bg-accent/40"
+          >
             <p className="text-sm font-medium text-foreground">{n.title}</p>
             <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{n.summary}</p>
             <p className="mt-2 flex items-center gap-2 text-[11px] text-muted-foreground">
@@ -788,7 +936,9 @@ export function NewsSearchView() {
             </p>
           </a>
         ))}
-        {!isLoading && (data ?? []).length === 0 && <p className="p-6 text-sm text-muted-foreground">No results.</p>}
+        {!isLoading && (data ?? []).length === 0 && (
+          <p className="p-6 text-sm text-muted-foreground">No results.</p>
+        )}
       </div>
     </div>
   );

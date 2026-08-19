@@ -25,6 +25,7 @@ import {
   Search,
   Settings,
   SlidersHorizontal,
+  Menu,
   Sparkles,
   Sprout,
   Star,
@@ -40,7 +41,14 @@ import { cn } from "@/lib/utils";
 
 export type PageId = string;
 
-type NavItem = { id: PageId; title: string; icon: LucideIcon; shortcut?: string; children?: NavItem[]; badge?: number };
+type NavItem = {
+  id: PageId;
+  title: string;
+  icon: LucideIcon;
+  shortcut?: string;
+  children?: NavItem[];
+  badge?: number;
+};
 type NavGroup = { heading?: string; items: NavItem[] };
 
 export const PAGE_TITLES: Record<string, string> = {};
@@ -56,9 +64,9 @@ export function buildNav(
     {
       items: [
         { id: "search", title: "Search", icon: Search, shortcut: "⌘K" },
+        { id: "watchlist", title: "Watchlist", icon: Star, badge: watchlistCount },
         { id: "markets", title: "Markets", icon: TrendingUp },
         { id: "proscreener", title: "Pro Screener", icon: SlidersHorizontal },
-        { id: "watchlist", title: "Watchlist", icon: Star, badge: watchlistCount },
         { id: "ai", title: "AI Analyst", icon: Sparkles },
         { id: "news", title: "Market News", icon: Newspaper },
         { id: "alerts", title: "Alerts", icon: Bell, badge: alertCount },
@@ -111,7 +119,11 @@ export function buildNav(
                 id: "custom",
                 title: "My Screeners",
                 icon: Star,
-                children: saved.map((s) => ({ id: `saved:${s.id}`, title: s.name, icon: SlidersHorizontal })),
+                children: saved.map((s) => ({
+                  id: `saved:${s.id}`,
+                  title: s.name,
+                  icon: SlidersHorizontal,
+                })),
               } as NavItem,
             ]
           : []),
@@ -128,7 +140,9 @@ export function buildNav(
         { id: "options", title: "Options Chain", icon: BarChart3 },
         { id: "ownership", title: "Ownership", icon: Crown },
         { id: "estimates", title: "Estimates & Valuation", icon: Target },
-        ...(supportsFilings ? [{ id: "filings", title: "Filings & ESG", icon: Newspaper } as NavItem] : []),
+        ...(supportsFilings
+          ? [{ id: "filings", title: "Filings & ESG", icon: Newspaper } as NavItem]
+          : []),
         { id: "newssearch", title: "News Search", icon: Search },
       ],
     },
@@ -141,7 +155,6 @@ export function buildNav(
         { id: "forex", title: "Forex", icon: Globe },
       ],
     },
-
   ];
 }
 
@@ -181,13 +194,15 @@ function NavButton({
   return (
     <button
       type="button"
+      aria-current={active ? "page" : undefined}
+      aria-label={item.title}
       onClick={item.children ? onToggle : onSelect}
       title={collapsed ? item.title : undefined}
       className={cn(
-        "group flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] transition-colors",
+        "group flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-[13px] transition-all duration-200",
         active
-          ? "bg-primary/10 font-medium text-primary"
-          : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
+          ? "bg-primary/12 font-medium text-primary shadow-sm ring-1 ring-primary/20"
+          : "text-muted-foreground hover:bg-accent/70 hover:text-foreground",
       )}
       style={{ paddingLeft: collapsed ? undefined : 10 + level * 14 }}
     >
@@ -196,11 +211,19 @@ function NavButton({
         <>
           <span className="flex-1 truncate text-left">{item.title}</span>
           {item.badge ? (
-            <span className="rounded-full bg-accent px-1.5 py-0.5 text-[10px] text-muted-foreground">{item.badge}</span>
+            <span className="rounded-full bg-accent px-1.5 py-0.5 text-[10px] text-muted-foreground">
+              {item.badge}
+            </span>
           ) : null}
-          {item.shortcut && <span className="text-[10px] text-muted-foreground/70">{item.shortcut}</span>}
+          {item.shortcut && (
+            <span className="text-[10px] text-muted-foreground/70">{item.shortcut}</span>
+          )}
           {item.children &&
-            (expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />)}
+            (expanded ? (
+              <ChevronDown className="h-3.5 w-3.5" />
+            ) : (
+              <ChevronRight className="h-3.5 w-3.5" />
+            ))}
         </>
       )}
     </button>
@@ -247,7 +270,13 @@ function CommandPalette({
 
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 p-4 pt-[12vh]" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex items-start justify-center bg-background/70 p-4 pt-[12vh] backdrop-blur-sm"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Search markets and commands"
+    >
       <div
         className="w-full max-w-xl overflow-hidden rounded-2xl border border-border bg-card shadow-2xl"
         onClick={(e) => e.stopPropagation()}
@@ -261,7 +290,9 @@ function CommandPalette({
             placeholder="Search tickers, companies or commands…"
             className="h-12 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
           />
-          <kbd className="rounded border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground">ESC</kbd>
+          <kbd className="rounded border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground">
+            ESC
+          </kbd>
         </div>
         <div className="max-h-[50vh] overflow-y-auto p-2">
           {tickers?.map((t) => (
@@ -294,6 +325,11 @@ function CommandPalette({
               {c.label}
             </button>
           ))}
+          {q.trim().length > 0 && (tickers?.length ?? 0) === 0 && commands.length === 0 && (
+            <p className="px-3 py-8 text-center text-sm text-muted-foreground">
+              No markets or commands found.
+            </p>
+          )}
         </div>
       </div>
     </div>
@@ -316,6 +352,7 @@ export function DashboardShell({
   children: ReactNode;
 }) {
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const [expanded, setExpanded] = useState<Set<string>>(new Set(["momentum"]));
   const [paletteOpen, setPaletteOpen] = useState(false);
   const { screeners, market, setMarket } = useAppState();
@@ -335,14 +372,22 @@ export function DashboardShell({
         e.preventDefault();
         setPaletteOpen((v) => !v);
       }
-      if (e.key === "Escape") setPaletteOpen(false);
+      if (e.key === "Escape") {
+        setPaletteOpen(false);
+        setMobileOpen(false);
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
   const select = (id: PageId) => {
-    if (id === "search") return setPaletteOpen(true);
+    if (id === "search") {
+      setPaletteOpen(true);
+      setMobileOpen(false);
+      return;
+    }
+    setMobileOpen(false);
     onNavigate(id);
   };
 
@@ -365,32 +410,37 @@ export function DashboardShell({
         onSelect={() => select(item.id)}
       />
       {item.children && expanded.has(item.id) && !collapsed && (
-        <div className="mt-0.5 flex flex-col gap-0.5">{item.children.map((c) => renderItem(c, level + 1))}</div>
+        <div className="mt-0.5 flex flex-col gap-0.5">
+          {item.children.map((c) => renderItem(c, level + 1))}
+        </div>
       )}
     </div>
   );
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
+    <div className="relative flex h-screen overflow-hidden bg-background">
       <aside
         className={cn(
-          "flex shrink-0 flex-col border-r border-border bg-card p-3 transition-[width] duration-200",
-          collapsed ? "w-[68px]" : "w-[260px]",
+          "absolute inset-y-0 left-0 z-40 flex shrink-0 flex-col border-r border-sidebar-border bg-sidebar p-3 shadow-2xl transition-[width,transform] duration-200 lg:relative lg:z-auto lg:shadow-none",
+          mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
+          collapsed ? "w-[288px] lg:w-[76px]" : "w-[288px] lg:w-[288px]",
         )}
       >
-        <div className="flex items-center gap-2.5 rounded-xl border border-border p-2.5">
+        <div className="glass-panel flex items-center gap-2.5 rounded-2xl border border-sidebar-border p-2.5">
           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">
             <LineChart className="h-4 w-4" />
           </span>
           {!collapsed && (
             <div className="min-w-0 flex-1">
-              <p className="truncate text-[13px] font-semibold text-foreground">Screener Terminal</p>
+              <p className="truncate text-[13px] font-semibold text-foreground">
+                Screener Terminal
+              </p>
               <p className="text-[11px] text-muted-foreground">Pro • Live Data</p>
             </div>
           )}
         </div>
 
-        <div className="no-scrollbar mt-3 flex flex-1 flex-col gap-4 overflow-y-auto">
+        <div className="no-scrollbar mt-4 flex flex-1 flex-col gap-5 overflow-y-auto">
           {groups.map((g, gi) => (
             <div key={gi} className="flex flex-col gap-0.5">
               {g.heading && !collapsed && (
@@ -408,21 +458,46 @@ export function DashboardShell({
         </div>
       </aside>
 
+      {mobileOpen && (
+        <button
+          type="button"
+          aria-label="Close navigation"
+          onClick={() => setMobileOpen(false)}
+          className="fixed inset-0 z-30 bg-background/70 backdrop-blur-sm lg:hidden"
+        />
+      )}
+
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-card/60 px-4 backdrop-blur">
+        <header className="glass-panel flex h-16 min-w-0 shrink-0 items-center gap-1.5 overflow-hidden border-b border-border/80 px-2.5 sm:gap-3 sm:px-5">
           <button
             type="button"
-            onClick={() => setCollapsed((v) => !v)}
-            className="rounded-md p-1.5 text-muted-foreground hover:text-foreground"
+            aria-label="Open navigation"
+            aria-expanded={mobileOpen}
+            onClick={() => setMobileOpen(true)}
+            className="rounded-xl p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground lg:hidden"
           >
-            {collapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+            <Menu className="h-4 w-4" />
           </button>
-          <nav className="flex items-center gap-2 text-[13px]">
-            <span className="text-muted-foreground">Personal Terminal</span>
+          <button
+            type="button"
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            onClick={() => setCollapsed((v) => !v)}
+            className="hidden rounded-xl p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground lg:flex"
+          >
+            {collapsed ? (
+              <PanelLeftOpen className="h-4 w-4" />
+            ) : (
+              <PanelLeftClose className="h-4 w-4" />
+            )}
+          </button>
+          <nav className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden text-[12px] sm:gap-2 sm:text-[13px]">
+            <span className="hidden text-muted-foreground sm:inline">Personal Terminal</span>
             <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/60" />
-            <span className="font-medium text-foreground">{PAGE_TITLES[page] ?? "Markets"}</span>
+            <span className="max-w-[112px] truncate font-semibold text-foreground sm:max-w-none">
+              {PAGE_TITLES[page] ?? "Markets"}
+            </span>
           </nav>
-          <div className="ml-auto flex items-center gap-1 rounded-lg border border-border p-0.5">
+          <div className="ml-auto hidden items-center gap-1 rounded-xl border border-border/80 bg-background/50 p-1 sm:flex">
             {(Object.keys(MARKETS) as MarketId[]).map((id) => (
               <button
                 key={id}
@@ -430,7 +505,9 @@ export function DashboardShell({
                 onClick={() => setMarket(id)}
                 className={cn(
                   "rounded-md px-2.5 py-1 text-[11px] transition-colors",
-                  market === id ? "bg-primary/15 font-medium text-primary" : "text-muted-foreground hover:text-foreground",
+                  market === id
+                    ? "bg-primary/15 font-medium text-primary"
+                    : "text-muted-foreground hover:text-foreground",
                 )}
               >
                 {MARKETS[id].short}
@@ -440,21 +517,23 @@ export function DashboardShell({
           <button
             type="button"
             onClick={() => setPaletteOpen(true)}
-            className=" flex h-9 items-center gap-2 rounded-lg border border-border px-3 text-xs text-muted-foreground hover:text-foreground"
+            className="flex h-9 w-[clamp(132px,44vw,300px)] shrink-0 items-center justify-center gap-1.5 rounded-xl border border-border/80 bg-background/50 px-2 text-[11px] text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground sm:gap-2 sm:px-3 sm:text-xs"
           >
-            <Search className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Search markets</span>
-            <kbd className="rounded border border-border px-1 py-0.5 text-[10px]">⌘K</kbd>
+            <Search className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">Search markets</span>
+            <kbd className="hidden rounded border border-border px-1 py-0.5 text-[10px] md:inline">
+              ⌘K
+            </kbd>
           </button>
           <button
             type="button"
             onClick={onRefresh}
-            className="rounded-md p-2 text-muted-foreground hover:text-foreground"
+            className="shrink-0 rounded-xl p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
             title="Refresh live data"
           >
             <RefreshCw className="h-4 w-4" />
           </button>
-          <span className="flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-[11px] text-muted-foreground">
+          <span className="hidden items-center gap-1.5 rounded-full border border-positive/25 bg-positive/5 px-2.5 py-1 text-[11px] text-positive sm:flex">
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-positive" /> Live
           </span>
         </header>
@@ -462,7 +541,11 @@ export function DashboardShell({
         <main className="min-h-0 flex-1 overflow-hidden">{children}</main>
       </div>
 
-      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} onNavigate={select} />
+      <CommandPalette
+        open={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+        onNavigate={select}
+      />
     </div>
   );
 }

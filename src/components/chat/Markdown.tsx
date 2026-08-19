@@ -3,6 +3,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { BarChart3, Code2, Table2 } from "lucide-react";
 import { Mermaid } from "./Mermaid";
+import { HtmlPreview } from "./HtmlPreview";
 import { artifactTitle, type Artifact } from "./artifact-types";
 import { cn } from "@/lib/utils";
 
@@ -30,7 +31,9 @@ function ArtifactCard({ artifact, onOpen }: { artifact: Artifact; onOpen: (a: Ar
           {artifact.content.split("\n").length} lines · click to open
         </span>
       </span>
-      <span className="text-xs text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100">Open</span>
+      <span className="text-xs text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100">
+        Open
+      </span>
     </button>
   );
 }
@@ -55,7 +58,10 @@ export const Markdown = memo(function Markdown({
         const language = /language-(\w+)/.exec(className || "")?.[1] ?? "";
         if (inline || (!language && !raw.includes("\n"))) {
           return (
-            <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-[0.85em] text-foreground" {...props}>
+            <code
+              className="rounded bg-muted px-1.5 py-0.5 font-mono text-[0.85em] text-foreground"
+              {...props}
+            >
               {children}
             </code>
           );
@@ -68,6 +74,9 @@ export const Markdown = memo(function Markdown({
           language: language || "text",
           content: raw,
         };
+        if ((kind === "html" || kind === "mermaid") && inlineDiagrams && kind === "html") {
+          return <HtmlPreview title={artifact.title} content={raw} compact={raw.length < 900} />;
+        }
         if (kind === "mermaid" && inlineDiagrams) {
           return (
             <div className="my-3 rounded-xl border border-border bg-card p-4">
@@ -102,16 +111,25 @@ export const Markdown = memo(function Markdown({
         </div>
       ),
       thead: ({ children }: { children?: React.ReactNode }) => (
-        <thead className="bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">{children}</thead>
+        <thead className="bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
+          {children}
+        </thead>
       ),
       th: ({ children }: { children?: React.ReactNode }) => (
         <th className="border-b border-border px-3 py-2 text-left font-medium">{children}</th>
       ),
       td: ({ children }: { children?: React.ReactNode }) => (
-        <td className="tabular border-b border-border px-3 py-2 text-foreground last:border-0">{children}</td>
+        <td className="tabular border-b border-border px-3 py-2 text-foreground last:border-0">
+          {children}
+        </td>
       ),
       a: ({ children, href }: { children?: React.ReactNode; href?: string }) => (
-        <a href={href} target="_blank" rel="noreferrer" className="text-primary underline underline-offset-2">
+        <a
+          href={href}
+          target="_blank"
+          rel="noreferrer"
+          className="text-primary underline underline-offset-2"
+        >
           {children}
         </a>
       ),
@@ -130,12 +148,16 @@ export const Markdown = memo(function Markdown({
       h3: ({ children }: { children?: React.ReactNode }) => (
         <h3 className="mt-3 mb-1.5 text-sm font-semibold text-foreground">{children}</h3>
       ),
-      p: ({ children }: { children?: React.ReactNode }) => <p className="my-2 leading-relaxed">{children}</p>,
+      p: ({ children }: { children?: React.ReactNode }) => (
+        <p className="my-2 leading-relaxed">{children}</p>
+      ),
       strong: ({ children }: { children?: React.ReactNode }) => (
         <strong className="font-semibold text-foreground">{children}</strong>
       ),
       blockquote: ({ children }: { children?: React.ReactNode }) => (
-        <blockquote className="my-3 border-l-2 border-primary/50 pl-3 text-muted-foreground">{children}</blockquote>
+        <blockquote className="my-3 border-l-2 border-primary/50 pl-3 text-muted-foreground">
+          {children}
+        </blockquote>
       ),
       hr: () => <hr className="my-4 border-border" />,
     }),

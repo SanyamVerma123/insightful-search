@@ -15,6 +15,7 @@ export function Mermaid({ code }: { code: string }) {
           startOnLoad: false,
           theme: "dark",
           securityLevel: "strict",
+          suppressErrorRendering: true,
           themeVariables: {
             background: "transparent",
             primaryColor: "#0f766e",
@@ -23,13 +24,20 @@ export function Mermaid({ code }: { code: string }) {
             fontFamily: "Inter, ui-sans-serif, system-ui",
           },
         });
+        mermaid.setParseErrorHandler(() => undefined);
+        const parsed = await mermaid.parse(code, { suppressErrors: true });
+        if (!parsed) throw new Error("Diagram syntax could not be validated");
         const { svg } = await mermaid.render(`m${id}`, code);
         if (!cancelled && ref.current) {
-          ref.current.innerHTML = svg;
+          ref.current.replaceChildren();
+          ref.current.insertAdjacentHTML("beforeend", svg);
           setError(null);
         }
-      } catch (e) {
-        if (!cancelled) setError(e instanceof Error ? e.message : "Diagram could not be rendered");
+      } catch {
+        if (!cancelled) {
+          ref.current?.replaceChildren();
+          setError("Diagram could not be rendered");
+        }
       }
     })();
     return () => {
@@ -39,11 +47,35 @@ export function Mermaid({ code }: { code: string }) {
 
   if (error) {
     return (
-      <div className="rounded-lg border border-border bg-muted/30 p-3">
-        <p className="text-xs text-negative">Diagram error: {error}</p>
-        <pre className="mt-2 overflow-x-auto text-[11px] text-muted-foreground">{code}</pre>
+      <div className="rounded-xl border border-border/80 bg-muted/20 p-4">
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <span className="h-2 w-2 rounded-full bg-primary" />
+          </span>
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-foreground">Visual preview unavailable</p>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">
+              The analyst returned a diagram that could not be drawn in this browser. The research
+              response is still available below, and you can open the source from the artifact
+              panel.
+            </p>
+          </div>
+        </div>
+        <details className="mt-3 rounded-lg border border-border/70 bg-background/35 p-2">
+          <summary className="cursor-pointer text-[11px] font-medium text-muted-foreground">
+            View diagram source
+          </summary>
+          <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap text-[11px] text-muted-foreground">
+            {code}
+          </pre>
+        </details>
       </div>
     );
   }
-  return <div ref={ref} className="mermaid-host flex w-full justify-center overflow-x-auto [&_svg]:max-w-full" />;
+  return (
+    <div
+      ref={ref}
+      className="mermaid-host flex w-full justify-center overflow-x-auto [&_svg]:max-w-full"
+    />
+  );
 }
