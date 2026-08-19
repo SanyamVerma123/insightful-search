@@ -284,8 +284,10 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const classify = useServerFn(classifySymbols);
 
   useEffect(() => {
-    setMarketState(load<MarketId>("sc:market", "US"));
-    setAssetClassState(load<AssetClass>("sc:asset-class", "equities"));
+    const storedMarket = load<MarketId>("sc:market", "US");
+    const storedAssetClass = load<AssetClass>("sc:asset-class", "equities");
+    setMarketState(storedMarket);
+    setAssetClassState(storedMarket === "IN" ? "equities" : storedAssetClass);
     setAllWatchlist(normalizeWatchlist(load<unknown>("sc:watchlist2", DEFAULT_WATCH)));
     setAlertsState(load<Alert[]>("sc:alerts", []));
     setAllScreeners(load<SavedScreener[]>("sc:screeners", []));
@@ -298,6 +300,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     document.documentElement.dataset["theme"] = theme;
     document.documentElement.classList.toggle("light", theme === "light");
     document.documentElement.classList.toggle("paper", theme === "paper");
+    document.documentElement.classList.toggle("terminal", theme === "terminal");
   }, [theme]);
 
   useEffect(() => {
@@ -347,7 +350,9 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       market,
       setMarket: (m) => {
         setMarketState(m);
+        setAssetClassState("equities");
         save("sc:market", m);
+        save("sc:asset-class", "equities");
       },
       assetClass,
       setAssetClass: (next) => {

@@ -27,8 +27,7 @@ import {
 } from "@/components/dashboard/tool-views";
 import { useAppState, useMarketConfig } from "@/lib/app-state";
 import { CRYPTO_SYMS, FOREX_SYMS } from "@/lib/markets";
-import { PRESETS } from "@/lib/universe";
-import { Activity, Clock3, Radio, Sparkles } from "lucide-react";
+import { PRESETS, symbolsForMarketPreset } from "@/lib/universe";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -54,7 +53,7 @@ export const Route = createFileRoute("/")({
 
 function Dashboard() {
   const [page, setPage] = useState<PageId>("markets");
-  const { watchSymbols, toggleWatchlist, alerts, screeners, refreshSeconds } = useAppState();
+  const { market, watchSymbols, toggleWatchlist, alerts, screeners } = useAppState();
   const cfg = useMarketConfig();
   const qc = useQueryClient();
 
@@ -85,64 +84,23 @@ function Dashboard() {
         case "markets":
           return (
             <div className="space-y-6">
-              <section className="rounded-3xl border border-border bg-card/80 p-6 shadow-sm">
-                <div className="flex items-start gap-3">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-primary/20 bg-primary/10 text-primary">
-                    <Activity className="h-5 w-5" />
-                  </span>
-                  <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
-                      Market intelligence
-                    </p>
-                    <h2 className="mt-1 text-2xl font-semibold tracking-tight text-foreground">
-                      Momentum, breadth, and activity
-                    </h2>
-                    <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-                      Switch between live market leaderboards to find the strongest moves and the
-                      names attracting the most attention.
-                    </p>
-                  </div>
+              <div className="flex items-end justify-between gap-4 border-b border-border/60 pb-4">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
+                    Market intelligence
+                  </p>
+                  <h2 className="mt-1 text-xl font-semibold tracking-tight text-foreground">
+                    Momentum, breadth, and activity
+                  </h2>
+                  <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
+                    Live market context for {cfg.label} equities, refreshed quietly in the
+                    background.
+                  </p>
                 </div>
-              </section>
-              <div className="grid gap-4 md:grid-cols-3">
-                {[
-                  {
-                    label: "Visible names",
-                    value: watchSymbols.length,
-                    note: "Current watchlist and screener matches",
-                    icon: Sparkles,
-                  },
-                  {
-                    label: "Refresh cadence",
-                    value: `${refreshSeconds}s`,
-                    note: "Live query freshness",
-                    icon: Clock3,
-                  },
-                  { label: "Signal mode", value: "Live", note: "Market data service", icon: Radio },
-                ].map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <div
-                      key={item.label}
-                      className="rounded-2xl border border-border bg-card p-5 shadow-sm"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                            {item.label}
-                          </p>
-                          <p className="mt-3 text-2xl font-semibold text-foreground">
-                            {item.value}
-                          </p>
-                          <p className="mt-2 text-xs text-muted-foreground">{item.note}</p>
-                        </div>
-                        <span className="flex h-9 w-9 items-center justify-center rounded-full border border-primary/20 text-primary">
-                          <Icon className="h-4 w-4" />
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
+                <span className="quiet-live-indicator hidden shrink-0 items-center gap-1.5 text-[11px] text-muted-foreground sm:flex">
+                  <span className="quiet-live-dot" aria-hidden="true" />
+                  Live context
+                </span>
               </div>
               <MarketStrip />
               <MoversView />
@@ -200,8 +158,13 @@ function Dashboard() {
           );
         default: {
           const preset = PRESETS[page];
-          if (preset)
-            return table(preset.syms, preset.test, "No tickers match this preset right now.");
+          if (preset) {
+            return table(
+              symbolsForMarketPreset(page, market),
+              preset.test,
+              "No tickers match this preset right now.",
+            );
+          }
           return <ProScreenerView />;
         }
       }

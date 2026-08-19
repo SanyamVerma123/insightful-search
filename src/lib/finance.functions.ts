@@ -61,7 +61,9 @@ export const searchTickers = createServerFn({ method: "GET" })
   .handler(({ data }) => fetchSearch(data.query));
 
 export const getFinancials = createServerFn({ method: "GET" })
-  .inputValidator((d: { symbol: string; statement: "income" | "balance" | "cash"; quarterly: boolean }) => d)
+  .inputValidator(
+    (d: { symbol: string; statement: "income" | "balance" | "cash"; quarterly: boolean }) => d,
+  )
   .handler(({ data }) => fetchFinancials(data.symbol, data.statement, data.quarterly));
 
 export const getAnalyst = createServerFn({ method: "GET" })
@@ -102,8 +104,8 @@ export const listPredefinedScreeners = createServerFn({ method: "GET" }).handler
 );
 
 export const runPredefinedScreener = createServerFn({ method: "GET" })
-  .inputValidator((d: { name: string; size?: number }) => d)
-  .handler(({ data }) => fetchScreenPredefined(data.name, data.size ?? 25));
+  .inputValidator((d: { name: string; size?: number; region?: string }) => d)
+  .handler(({ data }) => fetchScreenPredefined(data.name, data.size ?? 25, data.region ?? "us"));
 
 export const runEquityScreener = createServerFn({ method: "POST" })
   .inputValidator(
@@ -129,7 +131,6 @@ export const runEquityScreener = createServerFn({ method: "POST" })
     }) => d,
   )
   .handler(({ data }) => fetchScreenEquities(data));
-
 
 export const runEtfScreener = createServerFn({ method: "GET" })
   .inputValidator((d: { region?: string; size?: number }) => d)

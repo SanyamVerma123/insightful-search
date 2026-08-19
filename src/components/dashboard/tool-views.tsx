@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { ExternalLink } from "lucide-react";
@@ -93,7 +93,17 @@ function WatchSymbolPicker({ value, onChange }: { value: string; onChange: (v: s
 
 function useWatchSymbol() {
   const { watchlist } = useAppState();
-  const [symbol, setSymbol] = useState(watchlist[0]?.symbol ?? "AAPL");
+  const cfg = useMarketConfig();
+  const fallback = watchlist[0]?.symbol ?? cfg.equities[0] ?? "AAPL";
+  const [symbol, setSymbol] = useState(fallback);
+
+  useEffect(() => {
+    setSymbol((current) => {
+      if (watchlist.some((item) => item.symbol === current)) return current;
+      return watchlist[0]?.symbol ?? cfg.equities[0] ?? "AAPL";
+    });
+  }, [cfg.equities, cfg.id, watchlist]);
+
   return [symbol, setSymbol] as const;
 }
 
@@ -102,6 +112,7 @@ function useWatchSymbol() {
 export function MoversView() {
   const listFn = useServerFn(listPredefinedScreeners);
   const runFn = useServerFn(runPredefinedScreener);
+  const cfg = useMarketConfig();
   const [name, setName] = useState("day_gainers");
 
   const { data: names } = useQuery({
@@ -110,8 +121,8 @@ export function MoversView() {
     staleTime: 600_000,
   });
   const { data, isLoading } = useQuery({
-    queryKey: ["screen", name],
-    queryFn: () => runFn({ data: { name, size: 25 } }),
+    queryKey: ["screen", name, cfg.region],
+    queryFn: () => runFn({ data: { name, size: 25, region: cfg.region } }),
     staleTime: 60_000,
   });
 
@@ -221,6 +232,12 @@ export function ProScreenerView() {
 
   const [f, setF] = useState<ScreenerFilters>({ ...EMPTY_FILTERS, region: cfg.region });
   const [runs, setRuns] = useState(0);
+
+  useEffect(() => {
+    setF((current) =>
+      current.region === cfg.region ? current : { ...current, region: cfg.region },
+    );
+  }, [cfg.region]);
   const [name, setName] = useState("");
   const set = <K extends keyof ScreenerFilters>(k: K, v: ScreenerFilters[K]) =>
     setF((p) => ({ ...p, [k]: v }));
@@ -448,6 +465,10 @@ export function EtfScreenerView() {
   const cfg = useMarketConfig();
   const fn = useServerFn(runEtfScreener);
   const [region, setRegion] = useState(cfg.region);
+
+  useEffect(() => {
+    setRegion(cfg.region);
+  }, [cfg.region]);
   const { data, isLoading } = useQuery({
     queryKey: ["etfscreen", region],
     queryFn: () => fn({ data: { region, size: 30 } }),
@@ -691,7 +712,12 @@ export function CalendarsView() {
 export function GlobalMarketsView() {
   const summaryFn = useServerFn(getMarketSummary);
   const statusFn = useServerFn(getMarketStatus);
-  const [market, setMarket] = useState("US");
+  const { market: selectedMarket } = useAppState();
+  const [market, setMarket] = useState<string>(selectedMarket);
+
+  useEffect(() => {
+    setMarket(selectedMarket);
+  }, [selectedMarket]);
   const { data: summary } = useQuery({
     queryKey: ["summary", market],
     queryFn: () => summaryFn({ data: { market } }),

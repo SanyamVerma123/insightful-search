@@ -26,7 +26,7 @@ export function MarketStrip() {
   return (
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
       {(data ?? []).map((ix) => (
-        <div key={ix.key} className="rounded-2xl border border-border bg-card p-4">
+        <div key={ix.key} className="rounded-2xl border border-border/70 bg-card/55 p-4">
           <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
             {ix.label}
           </p>
@@ -66,41 +66,24 @@ export function WatchlistView() {
 
   return (
     <div className="space-y-5">
-      <section className="rounded-3xl border border-border bg-card/80 p-6 shadow-sm">
-        <div className="flex items-start gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-primary/20 bg-primary/10 text-primary">
-            <Star className="h-5 w-5" />
-          </span>
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
-              Watchlist intelligence
-            </p>
-            <h2 className="mt-1 text-2xl font-semibold tracking-tight text-foreground">
-              Keep the important names close
-            </h2>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              Your watchlist powers alerts, news feeds, and ticker-scoped research tools across the
-              terminal.
-            </p>
-          </div>
+      <div className="flex items-end justify-between gap-4 border-b border-border/60 pb-4">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
+            Watchlist intelligence
+          </p>
+          <h2 className="mt-1 text-xl font-semibold tracking-tight text-foreground">
+            Keep the important names close
+          </h2>
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">
+            Your selected names power alerts, news feeds, and research tools across the terminal.
+          </p>
         </div>
-      </section>
-      <div className="grid gap-4 md:grid-cols-3">
-        {[
-          { label: "Watchlist", value: watchlist.length, note: "Tracked companies" },
-          { label: "Groups", value: groups.length, note: "Sector categories" },
-          { label: "Research tools", value: 4, note: "Alerts, news, options, ownership" },
-        ].map((item) => (
-          <div key={item.label} className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-              {item.label}
-            </p>
-            <p className="mt-3 text-2xl font-semibold text-foreground">{item.value}</p>
-            <p className="mt-2 text-xs text-muted-foreground">{item.note}</p>
-          </div>
-        ))}
+        <span className="quiet-live-indicator hidden shrink-0 items-center gap-1.5 text-[11px] text-muted-foreground sm:flex">
+          <span className="quiet-live-dot" aria-hidden="true" />
+          Silent sync
+        </span>
       </div>
-      <section className="rounded-3xl border border-border bg-card p-6 shadow-sm">
+      <section className="rounded-3xl border border-border/70 bg-card/55 p-6 shadow-none">
         <div className="flex items-start justify-between gap-3">
           <div>
             <h3 className="text-base font-semibold text-foreground">Build your watchlist</h3>
@@ -123,7 +106,7 @@ export function WatchlistView() {
       </section>
       {groups.length > 0 && (
         <>
-          <div className="no-scrollbar flex gap-2 overflow-x-auto rounded-2xl border border-border bg-card p-2">
+          <div className="no-scrollbar flex gap-2 overflow-x-auto rounded-2xl border border-border/70 bg-card/55 p-2">
             {groups.map(([sector, items]) => (
               <button
                 key={sector}
@@ -151,8 +134,8 @@ export function WatchlistView() {
               </span>
             </div>
             <div className="mt-3 flex items-center justify-end text-[11px] text-muted-foreground">
-              <span className="mr-1 h-2 w-2 rounded-full bg-positive" />
-              Refreshing silently
+              <span className="quiet-live-dot mr-1.5" aria-hidden="true" />
+              <span className="sr-only">Live updates active</span>
             </div>
             <div className="mt-1">
               {activeItems.length > 0 ? (
@@ -162,7 +145,7 @@ export function WatchlistView() {
                   onToggleWatch={(symbol) => removeFromWatchlist(symbol)}
                 />
               ) : (
-                <p className="rounded-2xl border border-border bg-card p-8 text-sm text-muted-foreground">
+                <p className="rounded-2xl border border-border/70 bg-card/55 p-8 text-sm text-muted-foreground">
                   No tracked names in this sector.
                 </p>
               )}
@@ -171,7 +154,7 @@ export function WatchlistView() {
         </>
       )}
       {groups.length === 0 && (
-        <p className="rounded-2xl border border-border bg-card p-8 text-sm text-muted-foreground">
+        <p className="rounded-2xl border border-border/70 bg-card/55 p-8 text-sm text-muted-foreground">
           Your watchlist is empty — search above to add your first ticker.
         </p>
       )}
@@ -205,7 +188,7 @@ export function NewsView() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-border bg-card p-4">
+      <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-border/70 bg-card/55 p-4">
         <TickerAutocomplete
           className="w-full max-w-sm"
           onSelect={(s) => setSymbol(s)}
@@ -230,7 +213,7 @@ export function NewsView() {
         )}
       </div>
 
-      <div className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
+      <div className="divide-y divide-border overflow-hidden rounded-2xl border border-border/70 bg-card/55">
         {busy && <p className="p-6 text-sm text-muted-foreground">Loading headlines…</p>}
         {items.map((n) => (
           <a
@@ -274,7 +257,7 @@ export function AlertsView() {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-2xl border border-border bg-card p-4">
+      <div className="rounded-2xl border border-border/70 bg-card/55 p-4">
         <p className="mb-3 text-sm font-medium text-foreground">New price alert</p>
         <div className="flex flex-wrap items-center gap-2">
           <TickerAutocomplete
@@ -316,7 +299,7 @@ export function AlertsView() {
         </div>
       </div>
 
-      <div className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
+      <div className="divide-y divide-border overflow-hidden rounded-2xl border border-border/70 bg-card/55">
         {alerts.length === 0 && (
           <p className="flex items-center gap-2 p-6 text-sm text-muted-foreground">
             <Bell className="h-4 w-4" /> No alerts yet.
@@ -451,7 +434,7 @@ export function SettingsView() {
 
   return (
     <div className="max-w-3xl space-y-4">
-      <div className="rounded-2xl border border-border bg-card p-5">
+      <div className="rounded-2xl border border-border/70 bg-card/55 p-5">
         <p className="text-sm font-medium text-foreground">Equity market</p>
         <p className="mt-1 text-xs text-muted-foreground">
           Switch indices, screeners, heatmaps and terminal context between US and India.
@@ -480,7 +463,7 @@ export function SettingsView() {
         </p>
       </div>
 
-      <div className="rounded-2xl border border-border bg-card p-5">
+      <div className="rounded-2xl border border-border/70 bg-card/55 p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="text-sm font-medium text-foreground">AI providers</p>
@@ -494,7 +477,7 @@ export function SettingsView() {
         </div>
         <div className="mt-4 grid gap-4 md:grid-cols-2">
           {providers.map(([label, primary, fallback]) => (
-            <div key={primary} className="rounded-xl border border-border/70 bg-background/40 p-3">
+            <div key={primary} className="rounded-xl border border-border/60 bg-background/25 p-3">
               <p className="text-xs font-medium text-foreground">{label}</p>
               <label className="mt-2 block text-[11px] text-muted-foreground">
                 Primary
@@ -538,7 +521,7 @@ export function SettingsView() {
         </button>
       </div>
 
-      <div className="rounded-2xl border border-border bg-card p-5">
+      <div className="rounded-2xl border border-border/70 bg-card/55 p-5">
         <p className="text-sm font-medium text-foreground">Preferred analyst model</p>
         <p className="mt-1 text-xs text-muted-foreground">
           Choose the default model used when a new research chat starts.
@@ -561,7 +544,7 @@ export function SettingsView() {
         </select>
       </div>
 
-      <div className="rounded-2xl border border-border bg-card p-5">
+      <div className="rounded-2xl border border-border/70 bg-card/55 p-5">
         <p className="text-sm font-medium text-foreground">Custom model registry</p>
         <p className="mt-1 text-xs text-muted-foreground">
           Add any provider model ID and make it available in the Analyst picker.
@@ -621,7 +604,7 @@ export function SettingsView() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
-        <div className="rounded-2xl border border-border bg-card p-5">
+        <div className="rounded-2xl border border-border/70 bg-card/55 p-5">
           <p className="text-sm font-medium text-foreground">Live data refresh</p>
           <p className="mt-1 text-xs text-muted-foreground">
             How often quote tables re-poll market data.
@@ -644,7 +627,7 @@ export function SettingsView() {
             ))}
           </div>
         </div>
-        <div className="rounded-2xl border border-border bg-card p-5">
+        <div className="rounded-2xl border border-border/70 bg-card/55 p-5">
           <p className="text-sm font-medium text-foreground">Theme</p>
           <p className="mt-1 text-xs text-muted-foreground">
             Switch between terminal, light and paper treatments.
@@ -669,7 +652,7 @@ export function SettingsView() {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-border bg-card p-5">
+      <div className="rounded-2xl border border-border/70 bg-card/55 p-5">
         <p className="text-sm font-medium text-foreground">Saved screeners</p>
         {screeners.length === 0 ? (
           <p className="mt-1 text-xs text-muted-foreground">

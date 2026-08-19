@@ -32,7 +32,14 @@ export const UNIVERSE: Record<string, Meta> = {
 };
 
 export const US_SYMS = ["AAPL", "MSFT", "NVDA", "GOOGL", "AMZN", "META", "TSLA", "JPM"];
-export const IN_SYMS = ["RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS", "ICICIBANK.NS", "ITC.NS"];
+export const IN_SYMS = [
+  "RELIANCE.NS",
+  "TCS.NS",
+  "INFY.NS",
+  "HDFCBANK.NS",
+  "ICICIBANK.NS",
+  "ITC.NS",
+];
 export const SCREENER_SYMS = [...US_SYMS, ...IN_SYMS];
 export const ETF_SYMS = ["SPY", "QQQ", "IWM", "VTI"];
 export const CRYPTO_SYMS = ["BTC-USD", "ETH-USD", "SOL-USD"];
@@ -46,9 +53,20 @@ export type QuoteLike = {
   marketCap: number | null;
 };
 
-export const PRESETS: Record<string, { title: string; syms: string[]; test?: (q: QuoteLike) => boolean }> = {
-  "m-high": { title: "High Momentum", syms: SCREENER_SYMS, test: (q) => (q.changePercent ?? 0) > 0.5 },
-  "m-breakouts": { title: "Breakouts", syms: SCREENER_SYMS, test: (q) => (q.changePercent ?? 0) > 1.5 },
+export const PRESETS: Record<
+  string,
+  { title: string; syms: string[]; test?: (q: QuoteLike) => boolean }
+> = {
+  "m-high": {
+    title: "High Momentum",
+    syms: SCREENER_SYMS,
+    test: (q) => (q.changePercent ?? 0) > 0.5,
+  },
+  "m-breakouts": {
+    title: "Breakouts",
+    syms: SCREENER_SYMS,
+    test: (q) => (q.changePercent ?? 0) > 1.5,
+  },
   "m-52w": {
     title: "52-Week Highs",
     syms: SCREENER_SYMS,
@@ -62,3 +80,21 @@ export const PRESETS: Record<string, { title: string; syms: string[]; test?: (q:
   "vol-volume": { title: "Unusual Volume", syms: SCREENER_SYMS },
   "vol-earnings": { title: "Earnings Plays", syms: US_SYMS },
 };
+
+const INDIA_PRESET_SYMBOLS: Record<string, string[]> = {
+  "m-high": IN_SYMS,
+  "m-breakouts": IN_SYMS,
+  "m-52w": IN_SYMS,
+  "v-lowpe": IN_SYMS,
+  "v-divkings": ["ITC.NS", "HINDUNILVR.NS", "RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS"],
+  "v-fcf": ["RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS", "ITC.NS"],
+  "g-revenue": ["RELIANCE.NS", "BHARTIARTL.NS", "TCS.NS", "INFY.NS", "MARUTI.NS"],
+  "g-roe": ["TCS.NS", "INFY.NS", "HDFCBANK.NS", "ICICIBANK.NS", "ITC.NS"],
+  "vol-volume": IN_SYMS,
+  "vol-earnings": IN_SYMS,
+};
+
+export function symbolsForMarketPreset(key: string, market: "US" | "IN") {
+  if (market === "IN") return INDIA_PRESET_SYMBOLS[key] ?? IN_SYMS;
+  return (PRESETS[key]?.syms ?? US_SYMS).filter((symbol) => !/\.(NS|BO)$/i.test(symbol));
+}

@@ -199,12 +199,12 @@ function NavButton({
       onClick={item.children ? onToggle : onSelect}
       title={collapsed ? item.title : undefined}
       className={cn(
-        "group flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-[13px] transition-all duration-200",
+        "group flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-[13px] transition-all duration-200",
         active
-          ? "bg-primary/12 font-medium text-primary shadow-sm ring-1 ring-primary/20"
-          : "text-muted-foreground hover:bg-accent/70 hover:text-foreground",
+          ? "bg-primary/10 font-medium text-primary"
+          : "text-muted-foreground hover:bg-primary/5 hover:text-foreground",
       )}
-      style={{ paddingLeft: collapsed ? undefined : 10 + level * 14 }}
+      style={{ paddingLeft: collapsed ? undefined : 12 + level * 14 }}
     >
       <Icon className="h-4 w-4 shrink-0" />
       {!collapsed && (
@@ -421,12 +421,12 @@ export function DashboardShell({
     <div className="relative flex h-screen overflow-hidden bg-background">
       <aside
         className={cn(
-          "absolute inset-y-0 left-0 z-40 flex shrink-0 flex-col border-r border-sidebar-border bg-sidebar p-3 shadow-2xl transition-[width,transform] duration-200 lg:relative lg:z-auto lg:shadow-none",
+          "absolute inset-y-0 left-0 z-40 flex shrink-0 flex-col border-r border-sidebar-border/60 bg-transparent p-3 shadow-none transition-[width,transform] duration-200 lg:relative lg:z-auto lg:shadow-none",
           mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
           collapsed ? "w-[288px] lg:w-[76px]" : "w-[288px] lg:w-[288px]",
         )}
       >
-        <div className="glass-panel flex items-center gap-2.5 rounded-2xl border border-sidebar-border p-2.5">
+        <div className="flex items-center gap-2.5 rounded-2xl border border-sidebar-border/60 bg-transparent p-2.5">
           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">
             <LineChart className="h-4 w-4" />
           </span>
@@ -453,7 +453,7 @@ export function DashboardShell({
           ))}
         </div>
 
-        <div className="mt-auto flex flex-col gap-0.5 border-t border-border pt-3">
+        <div className="mt-auto flex flex-col gap-0.5 border-t border-border/60 pt-3">
           {BOTTOM.map((i) => renderItem(i, 0))}
         </div>
       </aside>
@@ -468,7 +468,7 @@ export function DashboardShell({
       )}
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="glass-panel flex h-16 min-w-0 shrink-0 items-center gap-1.5 overflow-hidden border-b border-border/80 px-2.5 sm:gap-3 sm:px-5">
+        <header className="flex h-16 min-w-0 shrink-0 items-center gap-1.5 overflow-hidden border-b border-border/60 bg-background/35 px-2.5 sm:gap-3 sm:px-5">
           <button
             type="button"
             aria-label="Open navigation"
@@ -497,7 +497,7 @@ export function DashboardShell({
               {PAGE_TITLES[page] ?? "Markets"}
             </span>
           </nav>
-          <div className="ml-auto hidden items-center gap-1 rounded-xl border border-border/80 bg-background/50 p-1 sm:flex">
+          <div className="ml-auto hidden items-center gap-1 rounded-xl border border-border/60 bg-transparent p-1 sm:flex">
             {(Object.keys(MARKETS) as MarketId[]).map((id) => (
               <button
                 key={id}
@@ -507,7 +507,7 @@ export function DashboardShell({
                   "rounded-md px-2.5 py-1 text-[11px] transition-colors",
                   market === id
                     ? "bg-primary/15 font-medium text-primary"
-                    : "text-muted-foreground hover:text-foreground",
+                    : "text-muted-foreground hover:bg-primary/5 hover:text-foreground",
                 )}
               >
                 {MARKETS[id].short}
@@ -517,7 +517,7 @@ export function DashboardShell({
           <button
             type="button"
             onClick={() => setPaletteOpen(true)}
-            className="flex h-9 w-[clamp(132px,44vw,300px)] shrink-0 items-center justify-center gap-1.5 rounded-xl border border-border/80 bg-background/50 px-2 text-[11px] text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground sm:gap-2 sm:px-3 sm:text-xs"
+            className="flex h-9 w-[clamp(132px,44vw,300px)] shrink-0 items-center justify-center gap-1.5 rounded-xl border border-border/60 bg-transparent px-3 text-[11px] text-muted-foreground transition-colors hover:border-primary/40 hover:bg-primary/5 hover:text-foreground sm:gap-2 sm:px-3 sm:text-xs"
           >
             <Search className="h-3.5 w-3.5 shrink-0" />
             <span className="truncate">Search markets</span>
@@ -533,8 +533,9 @@ export function DashboardShell({
           >
             <RefreshCw className="h-4 w-4" />
           </button>
-          <span className="hidden items-center gap-1.5 rounded-full border border-positive/25 bg-positive/5 px-2.5 py-1 text-[11px] text-positive sm:flex">
-            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-positive" /> Live
+          <span className="quiet-live-indicator hidden items-center gap-1.5 rounded-full border border-positive/25 bg-transparent px-2.5 py-1 text-[11px] text-positive sm:flex">
+            <span className="quiet-live-dot" aria-hidden="true" />
+            <span className="sr-only">Live updates active</span>
           </span>
         </header>
 
