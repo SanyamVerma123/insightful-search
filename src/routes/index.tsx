@@ -128,6 +128,12 @@ function Dashboard() {
           return table(CRYPTO_SYMS);
         case "forex":
           return table(FOREX_SYMS);
+        case "movers-gainers":
+          return <MoversView initialName="day_gainers" />;
+        case "movers-losers":
+          return <MoversView initialName="day_losers" />;
+        case "movers-active":
+          return <MoversView initialName="most_actives" />;
         case "movers":
           return <MoversView />;
         case "proscreener":

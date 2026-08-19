@@ -12,6 +12,7 @@ import { timeAgo } from "@/lib/format";
 import { useAppState, useMarketConfig } from "@/lib/app-state";
 import { MARKETS, type MarketId } from "@/lib/markets";
 import { cn } from "@/lib/utils";
+import { listChatModels, type ChatModel } from "@/lib/models.functions";
 
 export type Alert = { id: string; symbol: string; above: boolean; price: number; enabled: boolean };
 
@@ -355,6 +356,30 @@ export function SettingsView() {
     theme,
     setTheme,
   } = useAppState();
+  const modelsFn = useServerFn(listChatModels);
+  const { data: modelCatalog } = useQuery({
+    queryKey: [
+      "settings-chat-models",
+      apiKeys.openrouter,
+      apiKeys.kilo,
+      apiKeys.groq,
+      apiKeys.together,
+      apiKeys.deepseek,
+      apiKeys.opencode,
+    ],
+    queryFn: () =>
+      modelsFn({
+        data: {
+          openrouterKey: apiKeys.openrouter,
+          kiloKey: apiKeys.kilo,
+          groqKey: apiKeys.groq,
+          togetherKey: apiKeys.together,
+          deepseekKey: apiKeys.deepseek,
+          opencodeKey: apiKeys.opencode,
+        },
+      }),
+    staleTime: 600_000,
+  });
   const [draft, setDraft] = useState(() => ({
     openrouter: apiKeys.openrouter,
     openrouterFallback: apiKeys.openrouterFallback ?? "",
@@ -381,18 +406,43 @@ export function SettingsView() {
   const [saved, setSaved] = useState(false);
   const field =
     "mt-1 h-9 w-full rounded-lg border border-border bg-background px-3 text-sm text-foreground outline-none focus:border-primary/60";
-  const modelOptions = [
-    ["openrouter:openai/gpt-4o-mini", "GPT-4o Mini · OpenRouter"],
-    ["kilo:anthropic/claude-sonnet-4.5", "Claude Sonnet 4.5 · Kilo"],
-    ["kilo:nvidia/nemotron-3-ultra-550b-a55b:free", "Nemotron 3 Ultra · Kilo · Free"],
-    ["groq:llama-3.3-70b-versatile", "Llama 3.3 70B · Groq"],
-    ["together:meta-llama/Llama-3.3-70B-Instruct-Turbo", "Llama 3.3 70B Turbo · Together"],
-    ["deepseek:deepseek-chat", "DeepSeek Chat"],
-    ["deepseek:deepseek-reasoner", "DeepSeek Reasoner"],
-    ["opencode:big-pickle", "Big Pickle · OpenCode Zen"],
-  ] as const;
+  const preferredProvider = preferredModel.split(":", 1)[0];
+  const modelGroups = [
+    { label: "OpenRouter", provider: "openrouter" },
+    { label: "Kilo AI", provider: "kilo" },
+    { label: "Groq", provider: "groq" },
+    { label: "Together AI", provider: "together" },
+    { label: "DeepSeek", provider: "deepseek" },
+    { label: "OpenCode Zen", provider: "opencode" },
+  ].map(({ label, provider }) => {
+    const baseModels: ChatModel[] = (modelCatalog?.models ?? []).filter(
+      (model) => model.provider === provider,
+    );
+    const customModels: ChatModel[] = (apiKeys.customModels ?? [])
+      .filter((model) => model.provider === provider)
+      .map((model) => ({ id: model.id, label: model.label, provider: model.provider }));
+    const unique = [...baseModels, ...customModels].filter(
+      (model, index, all) => all.findIndex((candidate) => candidate.id === model.id) === index,
+    );
+    if (
+      preferredProvider === provider &&
+      preferredModel &&
+      !unique.some((model) => model.id === preferredModel)
+    ) {
+      unique.unshift({
+        id: preferredModel,
+        label: preferredModel.split(":").slice(1).join(":") || preferredModel,
+        provider: provider as ChatModel["provider"],
+      });
+    }
+    return { label, provider, models: unique };
+  });
   const updateDraft = (key: keyof typeof draft, value: string) =>
     setDraft((previous) => ({ ...previous, [key]: value }));
+  const selectPreferredModel = (value: string) => {
+    setPreferredModel(value);
+    setApiKeys({ ...apiKeys, preferredModel: value });
+  };
   const saveSettings = () => {
     const { lovable: _lovable, ...withoutLovable } = apiKeys;
     setApiKeys({
@@ -528,19 +578,21 @@ export function SettingsView() {
         </p>
         <select
           value={preferredModel}
-          onChange={(e) => setPreferredModel(e.target.value)}
+          onChange={(e) => selectPreferredModel(e.target.value)}
           className={`${field} max-w-xl`}
         >
-          {modelOptions.map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-          {(apiKeys.customModels ?? []).map((item) => (
-            <option key={item.id} value={item.id}>
-              {item.label}
-            </option>
-          ))}
+          {modelGroups.map((group) =>
+            group.models.length > 0 ? (
+              <optgroup key={group.label} label={group.label}>
+                {group.models.map((model) => (
+                  <option key={model.id} value={model.id}>
+                    {model.label}
+                    {model.note ? ` · ${model.note}` : ""}
+                  </option>
+                ))}
+              </optgroup>
+            ) : null,
+          )}
         </select>
       </div>
 
@@ -630,10 +682,10 @@ export function SettingsView() {
         <div className="rounded-2xl border border-border/70 bg-card/55 p-5">
           <p className="text-sm font-medium text-foreground">Theme</p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Switch between terminal, light and paper treatments.
+            Switch between terminal, light, paper, and NeuBorder treatments.
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
-            {(["terminal", "light", "paper"] as const).map((value) => (
+            {(["terminal", "light", "paper", "neuborder"] as const).map((value) => (
               <button
                 key={value}
                 type="button"
@@ -645,7 +697,7 @@ export function SettingsView() {
                     : "border-border text-muted-foreground hover:text-foreground",
                 )}
               >
-                {value}
+                {value === "neuborder" ? "NeuBorder" : value}
               </button>
             ))}
           </div>

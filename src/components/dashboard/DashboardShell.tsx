@@ -75,60 +75,23 @@ export function buildNav(
     {
       heading: "Screener Presets",
       items: [
-        {
-          id: "momentum",
-          title: "Momentum",
-          icon: Flame,
-          children: [
-            { id: "m-high", title: "High Momentum", icon: Zap },
-            { id: "m-breakouts", title: "Breakouts", icon: TrendingUp },
-            { id: "m-52w", title: "52-Week Highs", icon: LineChart },
-          ],
-        },
-        {
-          id: "value",
-          title: "Value",
-          icon: BadgeDollarSign,
-          children: [
-            { id: "v-lowpe", title: "Low P/E", icon: Coins },
-            { id: "v-divkings", title: "Dividend Kings", icon: Crown },
-            { id: "v-fcf", title: "High FCF Yield", icon: Coins },
-          ],
-        },
-        {
-          id: "growth",
-          title: "Growth",
-          icon: Sprout,
-          children: [
-            { id: "g-revenue", title: "Revenue Growth", icon: TrendingUp },
-            { id: "g-roe", title: "High ROE", icon: Target },
-          ],
-        },
-        {
-          id: "volatility",
-          title: "Volatility",
-          icon: Activity,
-          children: [
-            { id: "vol-volume", title: "Unusual Volume", icon: BarChart3 },
-            { id: "vol-earnings", title: "Earnings Plays", icon: CandlestickChart },
-          ],
-        },
-        ...(saved.length > 0
-          ? [
-              {
-                id: "custom",
-                title: "My Screeners",
-                icon: Star,
-                children: saved.map((s) => ({
-                  id: `saved:${s.id}`,
-                  title: s.name,
-                  icon: SlidersHorizontal,
-                })),
-              } as NavItem,
-            ]
-          : []),
+        { id: "movers-gainers", title: "Top Gainers", icon: TrendingUp },
+        { id: "movers-losers", title: "Top Losers", icon: TrendingUp },
+        { id: "movers-active", title: "Most Active", icon: BarChart3 },
       ],
     },
+    ...(saved.length > 0
+      ? [
+          {
+            heading: "Custom Screeners",
+            items: saved.map((s) => ({
+              id: `saved:${s.id}`,
+              title: s.name,
+              icon: SlidersHorizontal,
+            })),
+          } as NavGroup,
+        ]
+      : []),
     {
       heading: "Research Tools",
       items: [

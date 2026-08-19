@@ -207,6 +207,75 @@
     linear-gradient(135deg, oklch(0.965 0.018 92), oklch(0.94 0.02 84));
 }
 
+.neuborder {
+  --background: oklch(0.94 0.035 104);
+  --foreground: oklch(0.2 0.03 65);
+  --card: oklch(0.985 0.025 103);
+  --card-foreground: oklch(0.2 0.03 65);
+  --popover: oklch(0.985 0.025 103);
+  --popover-foreground: oklch(0.2 0.03 65);
+  --primary: oklch(0.54 0.16 150);
+  --primary-foreground: oklch(0.99 0.01 103);
+  --secondary: oklch(0.86 0.06 103);
+  --secondary-foreground: oklch(0.2 0.03 65);
+  --muted: oklch(0.9 0.045 103);
+  --muted-foreground: oklch(0.42 0.04 65);
+  --accent: oklch(0.82 0.12 98);
+  --accent-foreground: oklch(0.2 0.03 65);
+  --border: oklch(0.2 0.03 65);
+  --input: oklch(0.2 0.03 65);
+  --ring: oklch(0.54 0.16 150);
+  --surface: oklch(0.97 0.04 103);
+  --sidebar: oklch(0.9 0.055 103);
+  --sidebar-foreground: oklch(0.2 0.03 65);
+  --sidebar-primary: oklch(0.54 0.16 150);
+  --sidebar-primary-foreground: oklch(0.99 0.01 103);
+  --sidebar-accent: oklch(0.82 0.12 98);
+  --sidebar-accent-foreground: oklch(0.2 0.03 65);
+  --sidebar-border: oklch(0.2 0.03 65);
+  --sidebar-ring: oklch(0.54 0.16 150);
+  --neuborder-shadow: oklch(0.2 0.03 65);
+}
+
+.neuborder body {
+  background-image:
+    radial-gradient(circle at 12% 8%, oklch(1 0.02 103 / 0.72), transparent 34%),
+    linear-gradient(135deg, oklch(0.94 0.035 104), oklch(0.88 0.06 97));
+}
+
+.neuborder .rounded-3xl,
+.neuborder .rounded-2xl {
+  border-width: 2px;
+  border-color: var(--neuborder-shadow);
+  box-shadow: 5px 5px 0 var(--neuborder-shadow);
+}
+
+.neuborder .rounded-xl,
+.neuborder .rounded-lg {
+  border-width: 2px;
+  border-color: var(--neuborder-shadow);
+  box-shadow: 3px 3px 0 var(--neuborder-shadow);
+}
+
+.neuborder button:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 var(--neuborder-shadow);
+}
+
+.neuborder input,
+.neuborder select,
+.neuborder textarea {
+  border-width: 2px;
+  border-color: var(--neuborder-shadow);
+  box-shadow: 3px 3px 0 var(--neuborder-shadow);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .neuborder button:active {
+    transform: none;
+  }
+}
+
 .paper .rounded-2xl,
 .paper .rounded-xl {
   box-shadow: none;

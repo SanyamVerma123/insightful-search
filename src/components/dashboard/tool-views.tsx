@@ -109,17 +109,12 @@ function useWatchSymbol() {
 
 /* ---------------- Movers ---------------- */
 
-export function MoversView() {
-  const listFn = useServerFn(listPredefinedScreeners);
+const PRIMARY_MOVER_NAMES = ["day_gainers", "day_losers", "most_actives"] as const;
+
+export function MoversView({ initialName = "day_gainers" }: { initialName?: string } = {}) {
   const runFn = useServerFn(runPredefinedScreener);
   const cfg = useMarketConfig();
-  const [name, setName] = useState("day_gainers");
-
-  const { data: names } = useQuery({
-    queryKey: ["screeners"],
-    queryFn: () => listFn(),
-    staleTime: 600_000,
-  });
+  const [name, setName] = useState(initialName);
   const { data, isLoading } = useQuery({
     queryKey: ["screen", name, cfg.region],
     queryFn: () => runFn({ data: { name, size: 25, region: cfg.region } }),
@@ -129,7 +124,7 @@ export function MoversView() {
   return (
     <div className="space-y-4">
       <div className="no-scrollbar flex gap-2 overflow-x-auto">
-        {(names ?? ["day_gainers", "day_losers", "most_actives"]).map((n) => (
+        {PRIMARY_MOVER_NAMES.map((n) => (
           <Chip key={n} active={n === name} onClick={() => setName(n)}>
             {n.replace(/_/g, " ")}
           </Chip>

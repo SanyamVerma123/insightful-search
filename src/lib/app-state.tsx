@@ -12,7 +12,7 @@ import { classifySymbols } from "@/lib/finance.functions";
 import { MARKETS, type MarketId } from "@/lib/markets";
 
 export type AssetClass = "equities" | "etfs" | "crypto" | "forex";
-export type Theme = "terminal" | "light" | "paper";
+export type Theme = "terminal" | "light" | "paper" | "neuborder";
 
 export type WatchItem = {
   symbol: string;
@@ -293,7 +293,12 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     setAllScreeners(load<SavedScreener[]>("sc:screeners", []));
     setApiKeysState(normalizeApiKeys(load<unknown>("sc:apikeys", null)));
     setRefreshState(load<number>("sc:refresh", 60));
-    setThemeState(load<Theme>("sc:theme", "paper"));
+    const storedTheme = load<Theme>("sc:theme", "paper");
+    setThemeState(
+      (["terminal", "light", "paper", "neuborder"] as Theme[]).includes(storedTheme)
+        ? storedTheme
+        : "paper",
+    );
   }, []);
 
   useEffect(() => {
@@ -301,6 +306,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     document.documentElement.classList.toggle("light", theme === "light");
     document.documentElement.classList.toggle("paper", theme === "paper");
     document.documentElement.classList.toggle("terminal", theme === "terminal");
+    document.documentElement.classList.toggle("neuborder", theme === "neuborder");
   }, [theme]);
 
   useEffect(() => {
